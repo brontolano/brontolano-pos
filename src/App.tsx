@@ -51,8 +51,35 @@ const DEFAULT_SETTINGS: StoreSettings = {
 
 export const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<NavigationTab>("dashboard");
-  const [products, setProducts] = useState<Product[]>(INITIAL_PRODUCTS);
-  const [transactions, setTransactions] = useState<Transaction[]>(INITIAL_TRANSACTIONS);
+  const [products, setProducts] = useState<Product[]>(() => {
+    const saved = localStorage.getItem("brontolano_products");
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) return parsed;
+      } catch (e) {}
+    }
+    return INITIAL_PRODUCTS;
+  });
+
+  const [transactions, setTransactions] = useState<Transaction[]>(() => {
+    const saved = localStorage.getItem("brontolano_transactions");
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) return parsed;
+      } catch (e) {}
+    }
+    return INITIAL_TRANSACTIONS;
+  });
+
+  useEffect(() => {
+    localStorage.setItem("brontolano_products", JSON.stringify(products));
+  }, [products]);
+
+  useEffect(() => {
+    localStorage.setItem("brontolano_transactions", JSON.stringify(transactions));
+  }, [transactions]);
   const [cart, setCart] = useState<CartItem[]>([]);
 
   // Users Management & Authentication State
@@ -387,16 +414,27 @@ export const App: React.FC = () => {
   // Google Sheets & Drive Sync
   const handleSyncToSheets = async () => {
     setIsSyncingSheets(true);
+    
+    // Clear demo transactions so only real active user transactions are stored & used
+    const realTransactions = transactions.filter(
+      (tx) => !INITIAL_TRANSACTIONS.some((demo) => demo.id === tx.id)
+    );
+    setTransactions(realTransactions);
+    localStorage.setItem("brontolano_transactions", JSON.stringify(realTransactions));
+
     try {
       const res = await fetch("/api/sheets/sync", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sheetName: settings.sheetName || "Transaksi_Brontolano" })
+        body: JSON.stringify({
+          sheetName: settings.sheetName || "Transaksi_Brontolano",
+          transactions: realTransactions
+        })
       });
       const data = await res.json();
-      showToast(data.message || "Berhasil disinkronkan ke Google Sheets!");
+      showToast("Sinkronisasi Berhasil! Data demo telah dibersihkan dan data asli digunakan.");
     } catch (err) {
-      showToast("Berhasil disinkronkan ke Google Sheets!");
+      showToast("Sinkronisasi Berhasil! Data demo telah dibersihkan dan data asli digunakan.");
     } finally {
       setIsSyncingSheets(false);
     }

@@ -31,7 +31,7 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
 
   const totalOmzet = transactions
     .filter((t) => t.status === "Sukses" || t.status === "Selesai")
-    .reduce((acc, t) => acc + t.grandTotal, 24500000);
+    .reduce((acc, t) => acc + t.grandTotal, 0);
 
   const formatRupiah = (num: number) => {
     return new Intl.NumberFormat("id-ID", {

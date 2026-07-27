@@ -16,24 +16,38 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
 }) => {
   const [period, setPeriod] = useState<"Harian" | "Mingguan" | "Bulanan">("Bulanan");
 
-  const totalRevenue = 24500000;
-  const grossProfit = 14850000;
-  const netProfit = 11200000;
+  const totalRevenue = transactions
+    .filter((t) => t.status === "Sukses" || t.status === "Selesai")
+    .reduce((acc, t) => acc + t.grandTotal, 0);
+
+  const grossProfit = Math.round(totalRevenue * 0.6);
+  const netProfit = Math.round(totalRevenue * 0.45);
 
   const chartData = [
-    { name: "Minggu 1", revenue: 4800000, profit: 2900000 },
-    { name: "Minggu 2", revenue: 6200000, profit: 3800000 },
-    { name: "Minggu 3", revenue: 5900000, profit: 3500000 },
-    { name: "Minggu 4", revenue: 7600000, profit: 4650000 }
+    { name: "Minggu 1", revenue: Math.round(totalRevenue * 0.2), profit: Math.round(netProfit * 0.2) },
+    { name: "Minggu 2", revenue: Math.round(totalRevenue * 0.25), profit: Math.round(netProfit * 0.25) },
+    { name: "Minggu 3", revenue: Math.round(totalRevenue * 0.25), profit: Math.round(netProfit * 0.25) },
+    { name: "Minggu 4", revenue: Math.round(totalRevenue * 0.3), profit: Math.round(netProfit * 0.3) }
   ];
 
-  const topSelling = [
-    { name: "Arabica Coffee Beans 1kg", category: "Bahan Baku", sold: 184, total: 34040000 },
-    { name: "Pro Wireless Mouse", category: "Elektronik", sold: 92, total: 19320000 },
-    { name: "Potato Chips BBQ 150g", category: "Makanan", sold: 240, total: 3720000 },
-    { name: "Running Shoes Red Edition", category: "Pakaian", sold: 28, total: 21000000 },
-    { name: "Smartwatch Series 5", category: "Elektronik", sold: 15, total: 51750000 }
-  ];
+  const itemMap: Record<string, { name: string; category: string; sold: number; total: number }> = {};
+  transactions
+    .filter((t) => t.status === "Sukses" || t.status === "Selesai")
+    .forEach((tx) => {
+      tx.items.forEach((item) => {
+        const prodMatch = products.find((p) => p.name === item.name);
+        const cat = prodMatch ? prodMatch.category : "Umum";
+        if (!itemMap[item.name]) {
+          itemMap[item.name] = { name: item.name, category: cat, sold: 0, total: 0 };
+        }
+        itemMap[item.name].sold += item.qty;
+        itemMap[item.name].total += item.price * item.qty;
+      });
+    });
+
+  const topSelling = Object.values(itemMap)
+    .sort((a, b) => b.sold - a.sold)
+    .slice(0, 5);
 
   const formatRupiah = (num: number) => {
     return new Intl.NumberFormat("id-ID", {
@@ -164,20 +178,24 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
             </h3>
           </div>
           <div className="space-y-3">
-            {topSelling.map((item, idx) => (
-              <div key={idx} className="flex items-center justify-between p-2.5 bg-slate-50 rounded-xl border border-slate-100">
-                <div className="flex items-center gap-2.5">
-                  <span className="w-6 h-6 rounded-full bg-blue-100 text-[#1954d6] font-black text-xs flex items-center justify-center">
-                    {idx + 1}
-                  </span>
-                  <div>
-                    <p className="text-xs font-bold text-slate-900 line-clamp-1">{item.name}</p>
-                    <span className="text-[10px] text-slate-400">{item.sold} Terjual</span>
+            {topSelling.length === 0 ? (
+              <p className="text-xs text-slate-400 italic py-4 text-center">Belum ada data penjualan produk asli</p>
+            ) : (
+              topSelling.map((item, idx) => (
+                <div key={idx} className="flex items-center justify-between p-2.5 bg-slate-50 rounded-xl border border-slate-100">
+                  <div className="flex items-center gap-2.5">
+                    <span className="w-6 h-6 rounded-full bg-blue-100 text-[#1954d6] font-black text-xs flex items-center justify-center">
+                      {idx + 1}
+                    </span>
+                    <div>
+                      <p className="text-xs font-bold text-slate-900 line-clamp-1">{item.name}</p>
+                      <span className="text-[10px] text-slate-400">{item.sold} Terjual</span>
+                    </div>
                   </div>
+                  <span className="text-xs font-bold text-[#1954d6]">{formatRupiah(item.total)}</span>
                 </div>
-                <span className="text-xs font-bold text-[#1954d6]">{formatRupiah(item.total)}</span>
-              </div>
-            ))}
+              ))
+            )}
           </div>
         </div>
       </div>

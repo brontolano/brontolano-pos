@@ -16,13 +16,13 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   onNavigateTab,
   onFilterLowStock
 }) => {
-  const lowStockCount = products.filter(p => p.stock <= p.minStock).length;
+  const lowStockCount = products.filter((p) => p.stock <= p.minStock).length;
   const totalSales = transactions
-    .filter(t => t.status === "Sukses" || t.status === "Selesai")
-    .reduce((acc, curr) => acc + curr.grandTotal, 24500000);
-  
-  const totalTxCount = transactions.length + 137; // Total 142
-  const avgTxValue = Math.round(totalSales / (totalTxCount || 1));
+    .filter((t) => t.status === "Sukses" || t.status === "Selesai")
+    .reduce((acc, curr) => acc + curr.grandTotal, 0);
+
+  const totalTxCount = transactions.length;
+  const avgTxValue = totalTxCount > 0 ? Math.round(totalSales / totalTxCount) : 0;
 
   // Chart Data for 7 Days Sales Trend
   const chartData = [
@@ -94,7 +94,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           <div className="flex items-center justify-between">
             <div>
               <h3 className="text-2xl font-bold text-red-900 tracking-tight">
-                {lowStockCount > 0 ? `${lowStockCount} Produk` : "12 Produk"}
+                {lowStockCount} Produk
               </h3>
               <p className="text-xs text-red-700 font-medium mt-0.5">Perlu restok segera</p>
             </div>

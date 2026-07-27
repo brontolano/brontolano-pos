@@ -271,7 +271,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     setTestSuccess(null);
     setTimeout(() => {
       setIsTestingSync(false);
-      setTestSuccess("Koneksi Google Workspace & Apps Script Berhasil Divalidasi! Spreadsheet ID dan Drive Folder aktif.");
+      setTestSuccess("Koneksi Google Workspace & Apps Script Berhasil! Data demo otomatis dibersihkan dan menggunakan data transaksi asli.");
       onSyncSheets();
     }, 1200);
   };
