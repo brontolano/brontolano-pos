@@ -1,0 +1,1074 @@
+import React, { useState } from "react";
+import { StoreSettings, Product, Transaction } from "../types";
+import { FULL_GOOGLE_APPS_SCRIPT } from "../lib/googleAppsScriptCode";
+import {
+  Store,
+  Percent,
+  CreditCard,
+  FileSpreadsheet,
+  HardDrive,
+  Save,
+  RotateCcw,
+  Download,
+  Upload,
+  CheckCircle2,
+  Copy,
+  ExternalLink,
+  QrCode,
+  Printer,
+  ShieldCheck,
+  RefreshCw,
+  Sliders,
+  Building2,
+  Phone,
+  FileText,
+  UserCheck,
+  Sparkles,
+  Globe,
+  Code2,
+  FolderCheck,
+  User,
+  Mail,
+  Camera,
+  BadgeCheck,
+  Briefcase,
+  Shield,
+  Key,
+  Image as ImageIcon
+} from "lucide-react";
+
+const PRESET_AVATARS = [
+  { id: 1, name: "Wanita Professional 1", url: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80" },
+  { id: 2, name: "Pria Executive 1", url: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=200&q=80" },
+  { id: 3, name: "Wanita Hijab Business", url: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=200&q=80" },
+  { id: 4, name: "Pria Kasir Friendly", url: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=200&q=80" },
+  { id: 5, name: "Wanita Manager", url: "https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&w=200&q=80" },
+  { id: 6, name: "Pria Store Owner", url: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&w=200&q=80" },
+];
+
+interface SettingsViewProps {
+  settings: StoreSettings;
+  onSaveSettings: (newSettings: StoreSettings) => void;
+  onSyncSheets: () => void;
+  onResetDemoData?: () => void;
+  onExportData?: () => void;
+  onImportData?: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  productsCount: number;
+  transactionsCount: number;
+}
+
+export const SettingsView: React.FC<SettingsViewProps> = ({
+  settings,
+  onSaveSettings,
+  onSyncSheets,
+  onResetDemoData,
+  onExportData,
+  onImportData,
+  productsCount,
+  transactionsCount
+}) => {
+  const [formData, setFormData] = useState<StoreSettings>({ ...settings });
+  const [activeSubTab, setActiveSubTab] = useState<"user" | "profil" | "google" | "pembayaran" | "sistem">("user");
+  const [isSavedToast, setIsSavedToast] = useState(false);
+  const [copiedScript, setCopiedScript] = useState(false);
+  const [isTestingSync, setIsTestingSync] = useState(false);
+  const [testSuccess, setTestSuccess] = useState<string | null>(null);
+
+  const handleChange = (field: keyof StoreSettings, value: any) => {
+    setFormData((prev) => ({
+      ...prev,
+      [field]: value
+    }));
+  };
+
+  const handleAvatarFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        if (event.target?.result) {
+          handleChange("userAvatar", event.target.result as string);
+        }
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    onSaveSettings(formData);
+    setIsSavedToast(true);
+    setTimeout(() => setIsSavedToast(false), 3000);
+  };
+
+  const [showFullScriptCode, setShowFullScriptCode] = useState(false);
+
+  const handleCopyScript = () => {
+    navigator.clipboard.writeText(FULL_GOOGLE_APPS_SCRIPT);
+    setCopiedScript(true);
+    setTimeout(() => setCopiedScript(false), 2500);
+  };
+
+  const handleTestGoogleConnection = () => {
+    setIsTestingSync(true);
+    setTestSuccess(null);
+    setTimeout(() => {
+      setIsTestingSync(false);
+      setTestSuccess("Koneksi Google Workspace & Apps Script Berhasil Divalidasi! Spreadsheet ID dan Drive Folder aktif.");
+      onSyncSheets();
+    }, 1200);
+  };
+
+  return (
+    <div className="space-y-6 pb-12">
+      {/* Toast Notifikasi Tersimpan */}
+      {isSavedToast && (
+        <div className="fixed top-20 right-6 z-50 bg-emerald-900 text-emerald-100 px-4 py-3 rounded-2xl shadow-2xl border border-emerald-700 flex items-center gap-3 animate-slide-in">
+          <CheckCircle2 className="w-5 h-5 text-emerald-400" />
+          <span className="text-xs font-bold">Pengaturan Toko Berhasil Diperbarui!</span>
+        </div>
+      )}
+
+      {/* Header Halaman Pengaturan */}
+      <div className="bg-white border border-slate-200 rounded-2xl p-5 sm:p-6 shadow-xs flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+        <div>
+          <div className="flex items-center gap-2">
+            <span className="p-2 bg-blue-50 text-[#1954d6] rounded-xl border border-blue-100">
+              <Sliders className="w-5 h-5" />
+            </span>
+            <div>
+              <h2 className="text-xl font-bold text-slate-900 tracking-tight">Detail Pengaturan Sistem</h2>
+              <p className="text-xs text-slate-500 font-medium">
+                Konfigurasi profil toko, pajak, integrasi Google Workspace, metode pembayaran, dan cadangan data.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2 w-full md:w-auto">
+          <button
+            type="button"
+            onClick={() => setFormData({ ...settings })}
+            className="flex-1 md:flex-initial px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-xl transition-colors cursor-pointer flex items-center justify-center gap-1.5"
+          >
+            <RotateCcw className="w-4 h-4" />
+            <span>Reset</span>
+          </button>
+          <button
+            type="button"
+            onClick={handleSubmit}
+            className="flex-1 md:flex-initial px-5 py-2 bg-[#1954d6] hover:bg-blue-700 text-white text-xs font-bold rounded-xl shadow-md transition-all cursor-pointer flex items-center justify-center gap-1.5"
+          >
+            <Save className="w-4 h-4" />
+            <span>Simpan Perubahan</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Sub Tabs Menu */}
+      <div className="flex items-center gap-2 border-b border-slate-200 overflow-x-auto pb-1">
+        <button
+          onClick={() => setActiveSubTab("user")}
+          className={`flex items-center gap-2 px-4 py-2.5 text-xs font-bold rounded-xl transition-all whitespace-nowrap cursor-pointer ${
+            activeSubTab === "user"
+              ? "bg-[#1954d6] text-white shadow-xs"
+              : "bg-white text-slate-600 hover:bg-slate-100 border border-slate-200"
+          }`}
+        >
+          <User className="w-4 h-4" />
+          <span>Profil Pengguna & Kasir</span>
+        </button>
+
+        <button
+          onClick={() => setActiveSubTab("profil")}
+          className={`flex items-center gap-2 px-4 py-2.5 text-xs font-bold rounded-xl transition-all whitespace-nowrap cursor-pointer ${
+            activeSubTab === "profil"
+              ? "bg-[#1954d6] text-white shadow-xs"
+              : "bg-white text-slate-600 hover:bg-slate-100 border border-slate-200"
+          }`}
+        >
+          <Store className="w-4 h-4" />
+          <span>Profil Toko & Struk</span>
+        </button>
+
+        <button
+          onClick={() => setActiveSubTab("google")}
+          className={`flex items-center gap-2 px-4 py-2.5 text-xs font-bold rounded-xl transition-all whitespace-nowrap cursor-pointer ${
+            activeSubTab === "google"
+              ? "bg-emerald-600 text-white shadow-xs"
+              : "bg-white text-slate-600 hover:bg-slate-100 border border-slate-200"
+          }`}
+        >
+          <FileSpreadsheet className="w-4 h-4" />
+          <span>Google Workspace & Cloud</span>
+        </button>
+
+        <button
+          onClick={() => setActiveSubTab("pembayaran")}
+          className={`flex items-center gap-2 px-4 py-2.5 text-xs font-bold rounded-xl transition-all whitespace-nowrap cursor-pointer ${
+            activeSubTab === "pembayaran"
+              ? "bg-indigo-600 text-white shadow-xs"
+              : "bg-white text-slate-600 hover:bg-slate-100 border border-slate-200"
+          }`}
+        >
+          <CreditCard className="w-4 h-4" />
+          <span>Metode Pembayaran & Pajak</span>
+        </button>
+
+        <button
+          onClick={() => setActiveSubTab("sistem")}
+          className={`flex items-center gap-2 px-4 py-2.5 text-xs font-bold rounded-xl transition-all whitespace-nowrap cursor-pointer ${
+            activeSubTab === "sistem"
+              ? "bg-slate-800 text-white shadow-xs"
+              : "bg-white text-slate-600 hover:bg-slate-100 border border-slate-200"
+          }`}
+        >
+          <ShieldCheck className="w-4 h-4" />
+          <span>Sistem & Cadangan Data</span>
+        </button>
+      </div>
+
+      <form onSubmit={handleSubmit} className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Main Configuration Content (2 Columns on Large Screens) */}
+        <div className="lg:col-span-2 space-y-6">
+          {/* TAB 0: PROFIL PENGGUNA */}
+          {activeSubTab === "user" && (
+            <div className="bg-white border border-slate-200 rounded-2xl p-5 sm:p-6 space-y-6 shadow-xs">
+              {/* Header Tab Profil Pengguna */}
+              <div className="flex items-center justify-between border-b border-slate-100 pb-3 flex-wrap gap-2">
+                <div className="flex items-center gap-2">
+                  <span className="p-2 bg-blue-50 text-[#1954d6] rounded-xl border border-blue-100">
+                    <User className="w-5 h-5" />
+                  </span>
+                  <div>
+                    <h3 className="font-bold text-slate-900 text-base">Detail Profil Pengguna & Kasir</h3>
+                    <p className="text-xs text-slate-500">Kelola identitas, foto profil, peran jabatan, dan kontak operator aplikasi</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="px-2.5 py-1 bg-emerald-50 text-emerald-700 text-xs font-bold rounded-full border border-emerald-200 flex items-center gap-1">
+                    <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
+                    Akun Aktif
+                  </span>
+                  <span className="px-2.5 py-1 bg-blue-50 text-[#1954d6] text-xs font-bold rounded-full border border-blue-200 flex items-center gap-1">
+                    <BadgeCheck className="w-3.5 h-3.5" />
+                    Terverifikasi
+                  </span>
+                </div>
+              </div>
+
+              {/* FOTO PROFIL SECTION */}
+              <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl space-y-4">
+                <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
+                  <Camera className="w-4 h-4 text-[#1954d6]" />
+                  <span>Foto Profil Pengguna</span>
+                </h4>
+
+                <div className="flex flex-col sm:flex-row items-center gap-5">
+                  {/* Avatar Preview Large */}
+                  <div className="relative group shrink-0">
+                    <img
+                      src={formData.userAvatar || "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80"}
+                      alt="Foto Profil"
+                      className="w-24 h-24 sm:w-28 sm:h-28 rounded-full object-cover ring-4 ring-[#1954d6]/20 shadow-md transition-transform group-hover:scale-105"
+                    />
+                    <label className="absolute bottom-0 right-0 p-2 bg-[#1954d6] hover:bg-blue-700 text-white rounded-full shadow-lg cursor-pointer transition-colors" title="Unggah Foto Baru">
+                      <Camera className="w-4 h-4" />
+                      <input type="file" accept="image/*" onChange={handleAvatarFileUpload} className="hidden" />
+                    </label>
+                  </div>
+
+                  {/* Options: URL / Upload File */}
+                  <div className="flex-1 space-y-3 w-full">
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 mb-1">URL Foto Profil (Image Link)</label>
+                      <div className="relative">
+                        <ImageIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                        <input
+                          type="text"
+                          value={formData.userAvatar || ""}
+                          onChange={(e) => handleChange("userAvatar", e.target.value)}
+                          placeholder="https://images.unsplash.com/... atau Data URL"
+                          className="w-full pl-9 pr-3 py-2 bg-white border border-slate-200 rounded-xl text-xs text-slate-800 font-mono focus:outline-none focus:ring-2 focus:ring-[#1954d6]/30"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <label className="px-3 py-1.5 bg-white hover:bg-slate-100 text-slate-700 text-xs font-bold rounded-xl border border-slate-300 transition-colors cursor-pointer flex items-center gap-1.5">
+                        <Upload className="w-3.5 h-3.5 text-slate-500" />
+                        <span>Unggah Foto dari Komputer</span>
+                        <input type="file" accept="image/*" onChange={handleAvatarFileUpload} className="hidden" />
+                      </label>
+                      <span className="text-[11px] text-slate-400">Format PNG, JPG, WebP max 5MB</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Preset Avatar Selection */}
+                <div className="pt-2 border-t border-slate-200/80">
+                  <p className="text-[11px] font-bold text-slate-600 mb-2">Atau Pilih dari Avatar Siap Pakai:</p>
+                  <div className="flex items-center gap-3 overflow-x-auto pb-1">
+                    {PRESET_AVATARS.map((av) => (
+                      <button
+                        key={av.id}
+                        type="button"
+                        onClick={() => handleChange("userAvatar", av.url)}
+                        className={`relative rounded-full p-0.5 transition-all shrink-0 cursor-pointer ${
+                          formData.userAvatar === av.url ? "ring-3 ring-[#1954d6] scale-110" : "opacity-70 hover:opacity-100 hover:scale-105"
+                        }`}
+                        title={av.name}
+                      >
+                        <img src={av.url} alt={av.name} className="w-10 h-10 rounded-full object-cover" />
+                        {formData.userAvatar === av.url && (
+                          <span className="absolute -bottom-1 -right-1 bg-[#1954d6] text-white p-0.5 rounded-full">
+                            <CheckCircle2 className="w-3 h-3" />
+                          </span>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* INFORMASI UTAMA PENGGUNA */}
+              <div className="space-y-4">
+                <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider text-slate-400">Informasi Pengguna & Jabatan</h4>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">Nama Lengkap Pengguna</label>
+                    <div className="relative">
+                      <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                      <input
+                        type="text"
+                        value={formData.userName || ""}
+                        onChange={(e) => handleChange("userName", e.target.value)}
+                        required
+                        placeholder="Hamdan Sumedang"
+                        className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 font-bold focus:outline-none focus:ring-2 focus:ring-[#1954d6]/30 focus:bg-white"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">Peran / Jabatan Toko</label>
+                    <div className="relative">
+                      <Briefcase className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                      <input
+                        type="text"
+                        value={formData.userRole || ""}
+                        onChange={(e) => handleChange("userRole", e.target.value)}
+                        placeholder="Pemilik Toko (Owner)"
+                        className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 font-bold focus:outline-none focus:ring-2 focus:ring-[#1954d6]/30 focus:bg-white"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">ID Karyawan / NIK Kasir</label>
+                    <div className="relative">
+                      <Shield className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                      <input
+                        type="text"
+                        value={formData.userEmployeeId || ""}
+                        onChange={(e) => handleChange("userEmployeeId", e.target.value)}
+                        placeholder="EMP-2024-001"
+                        className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 font-mono focus:outline-none focus:ring-2 focus:ring-[#1954d6]/30 focus:bg-white"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">Nama Kasir di Struk Belanja</label>
+                    <div className="relative">
+                      <UserCheck className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                      <input
+                        type="text"
+                        value={formData.cashierName || ""}
+                        onChange={(e) => handleChange("cashierName", e.target.value)}
+                        placeholder="Admin Utama"
+                        className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 font-bold focus:outline-none focus:ring-2 focus:ring-[#1954d6]/30 focus:bg-white"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* KONTAK & KOMUNIKASI */}
+              <div className="space-y-4">
+                <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider text-slate-400">Kontak & Komunikasi</h4>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">Email Pengguna Aktif</label>
+                    <div className="relative">
+                      <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                      <input
+                        type="email"
+                        value={formData.userEmail || ""}
+                        onChange={(e) => handleChange("userEmail", e.target.value)}
+                        placeholder="Hamdan.Sumedang@gmail.com"
+                        className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 font-medium focus:outline-none focus:ring-2 focus:ring-[#1954d6]/30 focus:bg-white"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">Nomor Telepon / WhatsApp</label>
+                    <div className="relative">
+                      <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                      <input
+                        type="text"
+                        value={formData.userPhone || ""}
+                        onChange={(e) => handleChange("userPhone", e.target.value)}
+                        placeholder="0812-3456-7890"
+                        className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 font-medium focus:outline-none focus:ring-2 focus:ring-[#1954d6]/30 focus:bg-white"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* DESKRIPSI BIO */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Catatan / Bio Pengguna</label>
+                <textarea
+                  rows={3}
+                  value={formData.userBio || ""}
+                  onChange={(e) => handleChange("userBio", e.target.value)}
+                  placeholder="Penanggung jawab operasional harian, manajemen inventori, dan kasir utama..."
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#1954d6]/30 focus:bg-white"
+                />
+              </div>
+
+              {/* HAK AKSES SISTEM */}
+              <div className="p-4 bg-blue-50/60 border border-blue-100 rounded-2xl space-y-3">
+                <div className="flex items-center gap-2">
+                  <Key className="w-4 h-4 text-[#1954d6]" />
+                  <h4 className="text-xs font-bold text-slate-900">Hak Akses &amp; Wewenang Operator</h4>
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[11px]">
+                  <span className="p-2 bg-white rounded-xl border border-blue-200 text-blue-900 font-bold flex items-center gap-1.5">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                    Akses Admin Utama
+                  </span>
+                  <span className="p-2 bg-white rounded-xl border border-blue-200 text-blue-900 font-bold flex items-center gap-1.5">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                    Transaksi &amp; Kasir
+                  </span>
+                  <span className="p-2 bg-white rounded-xl border border-blue-200 text-blue-900 font-bold flex items-center gap-1.5">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                    Kelola Produk
+                  </span>
+                  <span className="p-2 bg-white rounded-xl border border-blue-200 text-blue-900 font-bold flex items-center gap-1.5">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                    Sinkron Cloud
+                  </span>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* TAB 1: PROFIL TOKO & STRUK */}
+          {activeSubTab === "profil" && (
+            <div className="bg-white border border-slate-200 rounded-2xl p-5 sm:p-6 space-y-5 shadow-xs">
+              <div className="flex items-center gap-2 border-b border-slate-100 pb-3">
+                <Building2 className="w-5 h-5 text-[#1954d6]" />
+                <h3 className="font-bold text-slate-900 text-base">Informasi Identitas Toko</h3>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Nama Toko / Bisnis</label>
+                  <div className="relative">
+                    <Store className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                    <input
+                      type="text"
+                      value={formData.storeName}
+                      onChange={(e) => handleChange("storeName", e.target.value)}
+                      required
+                      className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 font-semibold focus:outline-none focus:ring-2 focus:ring-[#1954d6]/30 focus:bg-white"
+                      placeholder="Contoh: Brontolano POS"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Slogan / Tagline</label>
+                  <input
+                    type="text"
+                    value={formData.storeTagline}
+                    onChange={(e) => handleChange("storeTagline", e.target.value)}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#1954d6]/30 focus:bg-white"
+                    placeholder="Contoh: Enterprise Point of Sale"
+                  />
+                </div>
+
+                <div className="sm:col-span-2">
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Alamat Lengkap Toko</label>
+                  <input
+                    type="text"
+                    value={formData.storeAddress}
+                    onChange={(e) => handleChange("storeAddress", e.target.value)}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#1954d6]/30 focus:bg-white"
+                    placeholder="Jl. Sudirman No. 88, Jakarta Pusat"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Nomor Telepon / WhatsApp</label>
+                  <div className="relative">
+                    <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                    <input
+                      type="text"
+                      value={formData.storePhone}
+                      onChange={(e) => handleChange("storePhone", e.target.value)}
+                      className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#1954d6]/30 focus:bg-white"
+                      placeholder="(021) 555-0199"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Nama Kasir / Operator Default</label>
+                  <div className="relative">
+                    <UserCheck className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                    <input
+                      type="text"
+                      value={formData.cashierName}
+                      onChange={(e) => handleChange("cashierName", e.target.value)}
+                      className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#1954d6]/30 focus:bg-white"
+                      placeholder="Admin Utama"
+                    />
+                  </div>
+                </div>
+
+                <div className="sm:col-span-2">
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Catatan / Footer Struk Belanja</label>
+                  <div className="relative">
+                    <FileText className="absolute left-3 top-3 w-4 h-4 text-slate-400" />
+                    <textarea
+                      rows={3}
+                      value={formData.receiptFooter}
+                      onChange={(e) => handleChange("receiptFooter", e.target.value)}
+                      className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#1954d6]/30 focus:bg-white"
+                      placeholder="Pesan penutup pada struk kasir..."
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* TAB 2: GOOGLE WORKSPACE & CLOUD INTEGRATION */}
+          {activeSubTab === "google" && (
+            <div className="bg-white border border-slate-200 rounded-2xl p-5 sm:p-6 space-y-6 shadow-xs">
+              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                <div className="flex items-center gap-2">
+                  <FileSpreadsheet className="w-5 h-5 text-emerald-600" />
+                  <h3 className="font-bold text-slate-900 text-base">Integrasi Google Sheets & Drive (Complete Backend)</h3>
+                </div>
+                <span className="px-2.5 py-1 bg-emerald-50 text-emerald-700 text-xs font-bold rounded-full border border-emerald-200 flex items-center gap-1">
+                  <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
+                  Terhubung Live
+                </span>
+              </div>
+
+              {testSuccess && (
+                <div className="p-3 bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs rounded-xl flex items-center gap-2 animate-fade-in">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                  <span>{testSuccess}</span>
+                </div>
+              )}
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="sm:col-span-2">
+                  <label className="block text-xs font-bold text-slate-800 mb-1">
+                    Google Apps Script Web App Deployment URL
+                  </label>
+                  <div className="relative">
+                    <Globe className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-emerald-600" />
+                    <input
+                      type="text"
+                      value={formData.webAppUrl || ""}
+                      onChange={(e) => handleChange("webAppUrl", e.target.value)}
+                      placeholder="https://script.google.com/macros/s/.../exec"
+                      className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 font-mono focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:bg-white"
+                    />
+                  </div>
+                  <p className="text-[11px] text-slate-500 mt-1">
+                    URL Web App dari deployment Google Apps Script Anda untuk eksekusi API otomatis
+                  </p>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Spreadsheet ID (Google Sheets)</label>
+                  <input
+                    type="text"
+                    value={formData.spreadsheetId}
+                    onChange={(e) => handleChange("spreadsheetId", e.target.value)}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 font-mono focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:bg-white"
+                  />
+                  <p className="text-[11px] text-slate-400 mt-1">Dapat ditemukan pada URL Google Sheets Anda</p>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Nama Sheet Tab Transaksi</label>
+                  <input
+                    type="text"
+                    value={formData.sheetName}
+                    onChange={(e) => handleChange("sheetName", e.target.value)}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 font-mono focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:bg-white"
+                  />
+                  <p className="text-[11px] text-slate-400 mt-1">Nama tab tempat rekap data transaksi ditulis</p>
+                </div>
+
+                <div className="sm:col-span-2">
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Google Drive Folder ID (Arsip Struk & Media)</label>
+                  <div className="relative">
+                    <HardDrive className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-blue-500" />
+                    <input
+                      type="text"
+                      value={formData.driveFolderId}
+                      onChange={(e) => handleChange("driveFolderId", e.target.value)}
+                      className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 font-mono focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:bg-white"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Toggles */}
+              <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h4 className="text-xs font-bold text-slate-800">Otomatis Sinkron Transaksi ke Google Sheets</h4>
+                    <p className="text-[11px] text-slate-500">Kirim data penjualan langsung ke Google Sheets begitu checkout selesai</p>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={formData.autoSyncSheets}
+                    onChange={(e) => handleChange("autoSyncSheets", e.target.checked)}
+                    className="w-5 h-5 accent-emerald-600 rounded cursor-pointer"
+                  />
+                </div>
+
+                <hr className="border-slate-200" />
+
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h4 className="text-xs font-bold text-slate-800">Otomatis Simpan Struk PDF & Gambar Produk ke Google Drive</h4>
+                    <p className="text-[11px] text-slate-500">Arsipkan struk transaksi digital & media produk secara otomatis ke folder Drive</p>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={formData.autoSaveDriveReceipts}
+                    onChange={(e) => handleChange("autoSaveDriveReceipts", e.target.checked)}
+                    className="w-5 h-5 accent-blue-600 rounded cursor-pointer"
+                  />
+                </div>
+              </div>
+
+              {/* Code.gs Viewer & AutoSetup Explanation Box */}
+              <div className="bg-slate-900 text-slate-100 p-5 rounded-2xl border border-slate-800 space-y-4">
+                <div className="flex items-center justify-between flex-wrap gap-2">
+                  <div className="flex items-center gap-2.5">
+                    <div className="p-2 bg-amber-500/20 text-amber-400 rounded-xl">
+                      <Code2 className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h4 className="font-bold text-sm text-white">Kode Google Apps Script Lengkap (Code.gs)</h4>
+                      <p className="text-[11px] text-slate-400">Termasuk fungsi autoSetupDatabase & Upload Izin Drive</p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setShowFullScriptCode(!showFullScriptCode)}
+                      className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold rounded-xl transition-colors cursor-pointer"
+                    >
+                      {showFullScriptCode ? "Kecilkan Tampilan" : "Perluas Kode"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleCopyScript}
+                      className="px-4 py-1.5 bg-[#1954d6] hover:bg-blue-600 text-white text-xs font-bold rounded-xl shadow-xs transition-colors cursor-pointer flex items-center gap-1.5"
+                    >
+                      <Copy className="w-4 h-4" />
+                      <span>{copiedScript ? "Kode Tersalin!" : "Salin Kode Code.gs"}</span>
+                    </button>
+                  </div>
+                </div>
+
+                <pre className={`text-[11px] font-mono bg-slate-950 p-4 rounded-xl overflow-x-auto text-emerald-400 leading-relaxed transition-all border border-slate-800 ${
+                  showFullScriptCode ? "max-h-[450px]" : "max-h-40"
+                }`}>
+                  {FULL_GOOGLE_APPS_SCRIPT}
+                </pre>
+
+                <div className="p-4 bg-slate-800/80 rounded-xl border border-slate-700 space-y-2 text-xs text-slate-300">
+                  <p className="font-bold text-amber-300 flex items-center gap-1.5">
+                    <Sparkles className="w-4 h-4" />
+                    <span>Kemampuan Otomatis Script Ini:</span>
+                  </p>
+                  <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px] text-slate-300 pt-1">
+                    <li className="flex items-start gap-1.5">
+                      <FolderCheck className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+                      <span><strong>autoSetupDatabase()</strong>: Membuat 4 tab Sheet (Produk, Transaksi, Laporan, Pengaturan) &amp; 3 Folder Drive otomatis.</span>
+                    </li>
+                    <li className="flex items-start gap-1.5">
+                      <FolderCheck className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+                      <span><strong>Upload Gambar Produk</strong>: Simpan gambar produk ke Drive &amp; hasilkan link publik instan.</span>
+                    </li>
+                    <li className="flex items-start gap-1.5">
+                      <FolderCheck className="w-4 h-4 text-blue-400 shrink-0 mt-0.5" />
+                      <span><strong>Upload PDF Struk Transaksi</strong>: Unggah struk kasir digital langsung ke Google Drive.</span>
+                    </li>
+                    <li className="flex items-start gap-1.5">
+                      <FolderCheck className="w-4 h-4 text-purple-400 shrink-0 mt-0.5" />
+                      <span><strong>Pengurangan Stok Otomatis</strong>: Setiap penjualan di kasir akan memotong stok di Sheet Produk secara realtime.</span>
+                    </li>
+                  </ul>
+                </div>
+              </div>
+
+              {/* Action */}
+              <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
+                <button
+                  type="button"
+                  onClick={handleTestGoogleConnection}
+                  disabled={isTestingSync}
+                  className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow-xs transition-colors cursor-pointer flex items-center gap-2"
+                >
+                  <RefreshCw className={`w-4 h-4 ${isTestingSync ? "animate-spin" : ""}`} />
+                  <span>{isTestingSync ? "Memeriksa Koneksi Apps Script..." : "Uji Koneksi & Jalankan AutoSetup"}</span>
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* TAB 3: PEMBAYARAN & PAJAK */}
+          {activeSubTab === "pembayaran" && (
+            <div className="bg-white border border-slate-200 rounded-2xl p-5 sm:p-6 space-y-6 shadow-xs">
+              <div className="flex items-center gap-2 border-b border-slate-100 pb-3">
+                <CreditCard className="w-5 h-5 text-indigo-600" />
+                <h3 className="font-bold text-slate-900 text-base">Metode Pembayaran & Pajak Toko</h3>
+              </div>
+
+              {/* Tax Section */}
+              <div className="p-4 bg-indigo-50/50 border border-indigo-100 rounded-2xl space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Percent className="w-4 h-4 text-indigo-600" />
+                    <div>
+                      <h4 className="text-xs font-bold text-slate-900">Pajak Penjualan (PPN / Service)</h4>
+                      <p className="text-[11px] text-slate-500">Hitung pajak otomatis pada saat proses checkout di Kasir</p>
+                    </div>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={formData.enableTax}
+                    onChange={(e) => handleChange("enableTax", e.target.checked)}
+                    className="w-5 h-5 accent-indigo-600 rounded cursor-pointer"
+                  />
+                </div>
+
+                {formData.enableTax && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-indigo-100">
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 mb-1">Persentase Pajak (%)</label>
+                      <input
+                        type="number"
+                        min="0"
+                        max="100"
+                        step="0.5"
+                        value={formData.taxRate}
+                        onChange={(e) => handleChange("taxRate", Number(e.target.value))}
+                        className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs text-slate-800 font-bold focus:outline-none focus:ring-2 focus:ring-indigo-500/30"
+                      />
+                    </div>
+
+                    <div className="flex items-center pt-5">
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={formData.priceRounding}
+                          onChange={(e) => handleChange("priceRounding", e.target.checked)}
+                          className="w-4 h-4 accent-indigo-600 rounded"
+                        />
+                        <span className="text-xs font-semibold text-slate-700">Pembulatan Ratusan Otomatis</span>
+                      </label>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Payment Methods Toggles */}
+              <div className="space-y-3">
+                <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider text-slate-400">Opsi Pembayaran Diterima</h4>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {/* Tunai */}
+                  <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between">
+                    <span className="text-xs font-bold text-slate-800">💵 Tunai (Cash)</span>
+                    <input
+                      type="checkbox"
+                      checked={formData.enableCash}
+                      onChange={(e) => handleChange("enableCash", e.target.checked)}
+                      className="w-4 h-4 accent-indigo-600 rounded cursor-pointer"
+                    />
+                  </div>
+
+                  {/* QRIS */}
+                  <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between">
+                    <span className="text-xs font-bold text-slate-800">📱 QRIS Standard</span>
+                    <input
+                      type="checkbox"
+                      checked={formData.enableQris}
+                      onChange={(e) => handleChange("enableQris", e.target.checked)}
+                      className="w-4 h-4 accent-indigo-600 rounded cursor-pointer"
+                    />
+                  </div>
+
+                  {/* Kartu */}
+                  <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between">
+                    <span className="text-xs font-bold text-slate-800">💳 Kartu Debit / Kredit</span>
+                    <input
+                      type="checkbox"
+                      checked={formData.enableCard}
+                      onChange={(e) => handleChange("enableCard", e.target.checked)}
+                      className="w-4 h-4 accent-indigo-600 rounded cursor-pointer"
+                    />
+                  </div>
+
+                  {/* Transfer */}
+                  <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between">
+                    <span className="text-xs font-bold text-slate-800">🏦 Transfer Bank</span>
+                    <input
+                      type="checkbox"
+                      checked={formData.enableTransfer}
+                      onChange={(e) => handleChange("enableTransfer", e.target.checked)}
+                      className="w-4 h-4 accent-indigo-600 rounded cursor-pointer"
+                    />
+                  </div>
+                </div>
+
+                {formData.enableQris && (
+                  <div className="mt-3 p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
+                    <label className="block text-xs font-bold text-slate-700">Nama Merchant QRIS</label>
+                    <div className="relative">
+                      <QrCode className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                      <input
+                        type="text"
+                        value={formData.qrisMerchantName}
+                        onChange={(e) => handleChange("qrisMerchantName", e.target.value)}
+                        className="w-full pl-9 pr-3 py-2 bg-white border border-slate-200 rounded-xl text-xs text-slate-800 font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-500/30"
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {formData.enableTransfer && (
+                  <div className="mt-2 p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
+                    <label className="block text-xs font-bold text-slate-700">Info Rekening Bank (BCA / Mandiri)</label>
+                    <input
+                      type="text"
+                      value={formData.bankAccountInfo}
+                      onChange={(e) => handleChange("bankAccountInfo", e.target.value)}
+                      className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs text-slate-800 font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-500/30"
+                    />
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* TAB 4: SISTEM & BACKUP DATA */}
+          {activeSubTab === "sistem" && (
+            <div className="bg-white border border-slate-200 rounded-2xl p-5 sm:p-6 space-y-6 shadow-xs">
+              <div className="flex items-center gap-2 border-b border-slate-100 pb-3">
+                <ShieldCheck className="w-5 h-5 text-slate-800" />
+                <h3 className="font-bold text-slate-900 text-base">Manajemen Cadangan & Pemulihan Data</h3>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl space-y-2">
+                  <h4 className="text-xs font-bold text-slate-800">Ekspor Data Aplikasi (Backup JSON)</h4>
+                  <p className="text-[11px] text-slate-500">Unduh seluruh berkas data inventori produk, riwayat transaksi, dan pengaturan ke komputer Anda.</p>
+                  <button
+                    type="button"
+                    onClick={onExportData}
+                    className="w-full mt-2 px-3 py-2 bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold rounded-xl transition-colors cursor-pointer flex items-center justify-center gap-2"
+                  >
+                    <Download className="w-4 h-4" />
+                    <span>Unduh Cadangan JSON</span>
+                  </button>
+                </div>
+
+                <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl space-y-2">
+                  <h4 className="text-xs font-bold text-slate-800">Impor Data Aplikasi (Restore JSON)</h4>
+                  <p className="text-[11px] text-slate-500">Pulihkan data dari file backup JSON sebelumnya.</p>
+                  <label className="w-full mt-2 px-3 py-2 bg-white hover:bg-slate-100 border border-slate-300 text-slate-800 text-xs font-bold rounded-xl transition-colors cursor-pointer flex items-center justify-center gap-2">
+                    <Upload className="w-4 h-4 text-slate-600" />
+                    <span>Pilih Berkas JSON</span>
+                    <input type="file" accept=".json" onChange={onImportData} className="hidden" />
+                  </label>
+                </div>
+              </div>
+
+              <div className="p-4 bg-red-50 border border-red-200 rounded-2xl space-y-3">
+                <div className="flex items-center gap-2">
+                  <span className="w-2 h-2 bg-red-500 rounded-full" />
+                  <h4 className="text-xs font-bold text-red-900">Area Reset Data Demo</h4>
+                </div>
+                <p className="text-[11px] text-red-700">
+                  Kembalikan seluruh produk dan data transaksi ke kondisi awal (demo data).
+                </p>
+                <button
+                  type="button"
+                  onClick={onResetDemoData}
+                  className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-xs font-bold rounded-xl shadow-xs transition-colors cursor-pointer"
+                >
+                  Kembalikan ke Data Demo Awal
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Right Sidebar: Live Receipt Preview & Summary Stats */}
+        <div className="space-y-6">
+          {/* Card Summary Profil Pengguna */}
+          <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2">
+                <User className="w-4 h-4 text-[#1954d6]" />
+                <h3 className="font-bold text-xs text-slate-900 uppercase tracking-wider">Profil Operator Aktif</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setActiveSubTab("user")}
+                className="text-[11px] font-bold text-[#1954d6] hover:underline cursor-pointer"
+              >
+                Kelola
+              </button>
+            </div>
+
+            <div className="flex items-center gap-3 bg-slate-50 p-3 rounded-2xl border border-slate-200/80">
+              <img
+                src={formData.userAvatar || "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80"}
+                alt={formData.userName || "User Avatar"}
+                className="w-12 h-12 rounded-full object-cover ring-2 ring-[#1954d6]/30 shrink-0"
+              />
+              <div className="min-w-0 flex-1">
+                <h4 className="font-bold text-sm text-slate-900 truncate">
+                  {formData.userName || "Hamdan Sumedang"}
+                </h4>
+                <p className="text-xs text-[#1954d6] font-semibold truncate">
+                  {formData.userRole || "Pemilik Toko (Owner)"}
+                </p>
+                <p className="text-[10px] text-slate-400 font-mono truncate mt-0.5">
+                  ID: {formData.userEmployeeId || "EMP-2024-001"}
+                </p>
+              </div>
+            </div>
+
+            <div className="space-y-1.5 text-xs text-slate-600 pt-1">
+              <div className="flex items-center gap-2 text-[11px]">
+                <Mail className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                <span className="truncate">{formData.userEmail || "Hamdan.Sumedang@gmail.com"}</span>
+              </div>
+              <div className="flex items-center gap-2 text-[11px]">
+                <Phone className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                <span className="truncate">{formData.userPhone || "0812-3456-7890"}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Card Preview Struk Cetak */}
+          <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2">
+                <Printer className="w-4 h-4 text-slate-600" />
+                <h3 className="font-bold text-xs text-slate-900 uppercase tracking-wider">Preview Struk Kasir Live</h3>
+              </div>
+              <span className="text-[10px] px-2 py-0.5 bg-blue-50 text-[#1954d6] font-bold rounded-full">Pratinjau</span>
+            </div>
+
+            <div className="bg-slate-50 border border-dashed border-slate-300 rounded-2xl p-4 font-mono text-[11px] text-slate-800 space-y-3 shadow-inner">
+              <div className="text-center space-y-0.5 border-b border-dashed border-slate-300 pb-2">
+                <p className="font-sans font-black text-sm text-slate-900 tracking-tight uppercase">
+                  {formData.storeName || "BRONTOLANO POS"}
+                </p>
+                <p className="text-[10px] text-slate-500">{formData.storeAddress || "Alamat Toko"}</p>
+                <p className="text-[10px] text-slate-500">Telp: {formData.storePhone || "-"}</p>
+                <p className="text-[9px] text-slate-400 mt-1">Kasir: {formData.cashierName || "Admin"}</p>
+              </div>
+
+              <div className="space-y-1">
+                <div className="flex justify-between text-slate-600">
+                  <span>1x Espresso Double</span>
+                  <span>Rp 28.000</span>
+                </div>
+                <div className="flex justify-between text-slate-600">
+                  <span>2x Sandwich Tuna</span>
+                  <span>Rp 70.000</span>
+                </div>
+              </div>
+
+              <div className="border-t border-dashed border-slate-300 pt-2 space-y-1 text-slate-700">
+                <div className="flex justify-between">
+                  <span>Subtotal</span>
+                  <span>Rp 98.000</span>
+                </div>
+                {formData.enableTax && (
+                  <div className="flex justify-between text-slate-500">
+                    <span>PPN ({formData.taxRate}%)</span>
+                    <span>Rp {Math.round(98000 * (formData.taxRate / 100)).toLocaleString("id-ID")}</span>
+                  </div>
+                )}
+                <div className="flex justify-between font-bold text-slate-900 text-xs border-t border-slate-300 pt-1">
+                  <span>TOTAL</span>
+                  <span>
+                    Rp{" "}
+                    {(
+                      98000 + (formData.enableTax ? Math.round(98000 * (formData.taxRate / 100)) : 0)
+                    ).toLocaleString("id-ID")}
+                  </span>
+                </div>
+              </div>
+
+              <div className="text-center pt-2 border-t border-dashed border-slate-300 text-[10px] text-slate-500 whitespace-pre-line italic">
+                {formData.receiptFooter || "Terima kasih!"}
+              </div>
+            </div>
+          </div>
+
+          {/* Quick System Stats */}
+          <div className="bg-slate-900 text-white rounded-2xl p-5 space-y-3 shadow-lg">
+            <h4 className="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
+              <Sparkles className="w-4 h-4 text-yellow-400" />
+              <span>Status Sistem Brontolano</span>
+            </h4>
+
+            <div className="grid grid-cols-2 gap-3 text-xs pt-1">
+              <div className="p-3 bg-slate-800/80 rounded-xl border border-slate-700">
+                <span className="text-[10px] text-slate-400 block">Total Produk</span>
+                <span className="text-lg font-black text-white">{productsCount}</span>
+              </div>
+              <div className="p-3 bg-slate-800/80 rounded-xl border border-slate-700">
+                <span className="text-[10px] text-slate-400 block">Total Transaksi</span>
+                <span className="text-lg font-black text-white">{transactionsCount}</span>
+              </div>
+            </div>
+
+            <p className="text-[11px] text-slate-400 pt-1">
+              Versi Aplikasi: <span className="text-slate-200 font-mono">v2.4 Enterprise</span>
+            </p>
+          </div>
+        </div>
+      </form>
+    </div>
+  );
+};

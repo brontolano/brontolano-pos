@@ -1,0 +1,6 @@
+{
+  "name": "Brontolano POS",
+  "description": "Aplikasi Kasir & Manajemen Toko (Point of Sale) dengan integrasi Google Sheets dan Google Drive untuk sinkronisasi transaksi, stok, dan laporan.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
