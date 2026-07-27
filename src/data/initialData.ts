@@ -229,3 +229,45 @@ export const CATEGORIES = [
   "Pakaian",
   "Aksesoris"
 ];
+
+export const INITIAL_USERS = [
+  {
+    id: "usr-admin-001",
+    username: "admin",
+    password: "bismillahberkah",
+    name: "Hamdan Sumedang (Super Admin)",
+    role: "Super Admin",
+    email: "Hamdan.Sumedang@gmail.com",
+    phone: "0812-3456-7890",
+    avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80",
+    employeeId: "ADM-001",
+    isActive: true,
+    createdAt: "2024-01-01T00:00:00.000Z",
+  },
+  {
+    id: "usr-kasir-001",
+    username: "kasir1",
+    password: "kasir123",
+    name: "Siti Rahmawati",
+    role: "Kasir",
+    email: "siti.kasir@brontolanopos.com",
+    phone: "0819-8765-4321",
+    avatar: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=200&q=80",
+    employeeId: "KSR-002",
+    isActive: true,
+    createdAt: "2024-02-15T00:00:00.000Z",
+  },
+  {
+    id: "usr-manager-001",
+    username: "manager1",
+    password: "manager123",
+    name: "Budi Santoso",
+    role: "Manager Store",
+    email: "budi.manager@brontolanopos.com",
+    phone: "0813-1122-3344",
+    avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=200&q=80",
+    employeeId: "MGR-001",
+    isActive: true,
+    createdAt: "2024-02-01T00:00:00.000Z",
+  }
+];

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
-import { Product, Transaction, CartItem, NavigationTab, PaymentMethod, StoreSettings } from "./types";
-import { INITIAL_PRODUCTS, INITIAL_TRANSACTIONS, CATEGORIES } from "./data/initialData";
+import { Product, Transaction, CartItem, NavigationTab, PaymentMethod, StoreSettings, AppUser } from "./types";
+import { INITIAL_PRODUCTS, INITIAL_TRANSACTIONS, CATEGORIES, INITIAL_USERS } from "./data/initialData";
 import { Header } from "./components/Header";
 import { Navigation } from "./components/Navigation";
 import { DashboardView } from "./components/DashboardView";
@@ -11,6 +11,7 @@ import { ReportsView } from "./components/ReportsView";
 import { SettingsView } from "./components/SettingsView";
 import { ReceiptModal } from "./components/ReceiptModal";
 import { AddProductModal } from "./components/AddProductModal";
+import { LoginModal } from "./components/LoginModal";
 
 const DEFAULT_SETTINGS: StoreSettings = {
   storeName: "Brontolano POS",
@@ -54,6 +55,29 @@ export const App: React.FC = () => {
   const [transactions, setTransactions] = useState<Transaction[]>(INITIAL_TRANSACTIONS);
   const [cart, setCart] = useState<CartItem[]>([]);
 
+  // Users Management & Authentication State
+  const [users, setUsers] = useState<AppUser[]>(() => {
+    const saved = localStorage.getItem("brontolano_users");
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      } catch (e) {}
+    }
+    return INITIAL_USERS;
+  });
+
+  const [currentUser, setCurrentUser] = useState<AppUser | null>(() => {
+    const saved = localStorage.getItem("brontolano_current_user");
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (parsed && parsed.id) return parsed;
+      } catch (e) {}
+    }
+    return null; // Locked by default on startup
+  });
+
   // Settings State
   const [settings, setSettings] = useState<StoreSettings>(() => {
     const saved = localStorage.getItem("brontolano_settings");
@@ -66,6 +90,74 @@ export const App: React.FC = () => {
     }
     return DEFAULT_SETTINGS;
   });
+
+  // Auth Handlers
+  const handleLogin = (user: AppUser) => {
+    setCurrentUser(user);
+    localStorage.setItem("brontolano_current_user", JSON.stringify(user));
+    setSettings((prev) => ({
+      ...prev,
+      userName: user.name,
+      userRole: user.role,
+      cashierName: user.name,
+      userAvatar: user.avatar || prev.userAvatar,
+      userEmail: user.email || prev.userEmail,
+      userEmployeeId: user.employeeId || prev.userEmployeeId
+    }));
+    showToast(`Selamat datang kembali, ${user.name}!`);
+  };
+
+  const handleLogout = () => {
+    setCurrentUser(null);
+    localStorage.removeItem("brontolano_current_user");
+    showToast("Aplikasi telah dikunci. Silakan login untuk melanjutkan.");
+  };
+
+  // User CRUD Handlers
+  const handleAddUser = (newUser: Omit<AppUser, "id" | "createdAt">) => {
+    const created: AppUser = {
+      ...newUser,
+      id: "usr-" + Date.now(),
+      createdAt: new Date().toISOString()
+    };
+    const updated = [created, ...users];
+    setUsers(updated);
+    localStorage.setItem("brontolano_users", JSON.stringify(updated));
+    showToast(`User @${created.username} (${created.name}) berhasil ditambahkan!`);
+  };
+
+  const handleUpdateUser = (updatedUser: AppUser) => {
+    const updated = users.map((u) => (u.id === updatedUser.id ? updatedUser : u));
+    setUsers(updated);
+    localStorage.setItem("brontolano_users", JSON.stringify(updated));
+
+    if (currentUser?.id === updatedUser.id) {
+      setCurrentUser(updatedUser);
+      localStorage.setItem("brontolano_current_user", JSON.stringify(updatedUser));
+      setSettings((prev) => ({
+        ...prev,
+        userName: updatedUser.name,
+        userRole: updatedUser.role,
+        cashierName: updatedUser.name,
+        userAvatar: updatedUser.avatar || prev.userAvatar,
+        userEmail: updatedUser.email || prev.userEmail,
+        userEmployeeId: updatedUser.employeeId || prev.userEmployeeId
+      }));
+    }
+    showToast(`Data user @${updatedUser.username} berhasil diperbarui!`);
+  };
+
+  const handleDeleteUser = (userId: string) => {
+    const targetUser = users.find((u) => u.id === userId);
+    if (targetUser?.username === "admin") {
+      showToast("User admin utama tidak dapat dihapus!");
+      return;
+    }
+    const updated = users.filter((u) => u.id !== userId);
+    setUsers(updated);
+    localStorage.setItem("brontolano_users", JSON.stringify(updated));
+    showToast("User pengguna berhasil dihapus.");
+  };
 
   const handleSaveSettings = (newSettings: StoreSettings) => {
     setSettings(newSettings);
@@ -324,6 +416,16 @@ export const App: React.FC = () => {
     }
   };
 
+  if (!currentUser) {
+    return (
+      <LoginModal
+        users={users}
+        onLogin={handleLogin}
+        storeName={settings.storeName}
+      />
+    );
+  }
+
   return (
     <div className="min-h-screen bg-slate-50 font-sans text-slate-800 flex flex-col antialiased selection:bg-[#1954d6]/20">
       {/* Toast Banner */}
@@ -337,12 +439,13 @@ export const App: React.FC = () => {
       {/* Header */}
       <Header
         storeName={settings.storeName}
-        userName={settings.userName}
-        userRole={settings.userRole}
-        userAvatar={settings.userAvatar}
+        userName={currentUser?.name || settings.userName}
+        userRole={currentUser?.role || settings.userRole}
+        userAvatar={currentUser?.avatar || settings.userAvatar}
         searchValue={globalSearch}
         onSearchChange={setGlobalSearch}
         onOpenSettings={() => setActiveTab("pengaturan")}
+        onLogout={handleLogout}
       />
 
       {/* Navigation Tabs */}
@@ -422,6 +525,12 @@ export const App: React.FC = () => {
             onImportData={handleImportData}
             productsCount={products.length}
             transactionsCount={transactions.length}
+            users={users}
+            currentUser={currentUser}
+            onAddUser={handleAddUser}
+            onUpdateUser={handleUpdateUser}
+            onDeleteUser={handleDeleteUser}
+            onSwitchUser={handleLogout}
           />
         )}
       </main>

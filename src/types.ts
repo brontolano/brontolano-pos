@@ -95,3 +95,19 @@ export interface StoreSettings {
   userAvatar?: string;
   userEmployeeId?: string;
 }
+
+export type UserRole = "Super Admin" | "Kasir" | "Manager Store";
+
+export interface AppUser {
+  id: string;
+  username: string;
+  password?: string;
+  name: string;
+  role: UserRole | string;
+  email?: string;
+  phone?: string;
+  avatar?: string;
+  employeeId?: string;
+  isActive: boolean;
+  createdAt: string;
+}

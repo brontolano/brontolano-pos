@@ -1,10 +1,11 @@
 import React from "react";
-import { Bell, Search, FileSpreadsheet, HardDrive, CheckCircle2, Settings } from "lucide-react";
+import { Bell, Search, FileSpreadsheet, HardDrive, CheckCircle2, Settings, LogOut } from "lucide-react";
 
 interface HeaderProps {
   onSearchChange?: (val: string) => void;
   searchValue?: string;
   onOpenSettings?: () => void;
+  onLogout?: () => void;
   isSheetsConnected?: boolean;
   storeName?: string;
   userName?: string;
@@ -16,6 +17,7 @@ export const Header: React.FC<HeaderProps> = ({
   onSearchChange,
   searchValue = "",
   onOpenSettings,
+  onLogout,
   isSheetsConnected = true,
   storeName = "Brontolano POS",
   userName = "Hamdan Sumedang",
@@ -87,6 +89,18 @@ export const Header: React.FC<HeaderProps> = ({
             <Bell className="w-5 h-5" />
             <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full ring-2 ring-white" />
           </button>
+
+          {/* Logout Button */}
+          {onLogout && (
+            <button
+              onClick={onLogout}
+              className="p-2 text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-xl transition-colors cursor-pointer flex items-center gap-1.5"
+              title="Keluar / Kunci Aplikasi (Logout)"
+            >
+              <LogOut className="w-5 h-5 text-slate-500 group-hover:text-red-600" />
+              <span className="text-xs font-bold text-slate-700 hover:text-red-600 hidden lg:inline">Keluar</span>
+            </button>
+          )}
         </div>
       </div>
     </header>
