@@ -2,6 +2,8 @@ import React, { useState } from "react";
 import { Product } from "../types";
 import { Plus, Search, Filter, AlertTriangle, Package, CheckCircle2, LayoutGrid, List, Edit, Trash2 } from "lucide-react";
 
+import { handleImageError } from "../utils/imageUtils";
+
 interface InventoryViewProps {
   products: Product[];
   categories: string[];
@@ -36,12 +38,13 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
     return matchesSearch && matchesCategory && matchesLowStock;
   });
 
-  const totalItemsCount = products.length + 1272; // Matched to screenshot 1,284 Item
+  const totalItemsCount = products.length;
   const totalInventoryValue = products.reduce(
     (acc, p) => acc + p.price * p.stock,
-    452800000
+    0
   );
   const criticalStockCount = products.filter((p) => p.stock <= p.minStock).length;
+  const activeCategoriesCount = categories.filter((c) => c !== "Semua Kategori").length || new Set(products.map((p) => p.category)).size;
 
   const formatRupiah = (num: number) => {
     return new Intl.NumberFormat("id-ID", {
@@ -76,7 +79,9 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
         <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
           <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">TOTAL PRODUK</p>
           <h3 className="text-2xl font-bold text-slate-900 mt-1">{totalItemsCount.toLocaleString()} Item</h3>
-          <p className="text-xs text-slate-500 mt-1">12 Kategori aktif</p>
+          <p className="text-xs text-slate-500 mt-1">
+            {totalItemsCount > 0 ? `${activeCategoriesCount} Kategori Terorganisir` : "Belum ada produk"}
+          </p>
         </div>
 
         {/* Nilai Inventori */}
@@ -90,7 +95,7 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
         <div className="bg-red-50 p-4 rounded-2xl border border-red-200 shadow-xs">
           <p className="text-xs font-bold text-red-800 uppercase tracking-wider">STOK KRITIS</p>
           <h3 className="text-2xl font-bold text-red-900 mt-1">
-            {criticalStockCount > 0 ? `${criticalStockCount} Produk` : "12 Produk"}
+            {criticalStockCount} Produk
           </h3>
           <button
             onClick={() => setOnlyLowStock(!onlyLowStock)}
@@ -103,8 +108,12 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
         {/* Kategori */}
         <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
           <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">KATEGORI</p>
-          <h3 className="text-2xl font-bold text-slate-900 mt-1">18 Group</h3>
-          <p className="text-xs text-slate-500 mt-1">Terorganisir baik</p>
+          <h3 className="text-2xl font-bold text-slate-900 mt-1">
+            {products.length > 0 ? new Set(products.map((p) => p.category)).size : 0} Group
+          </h3>
+          <p className="text-xs text-slate-500 mt-1">
+            {products.length > 0 ? "Terorganisir baik" : "Belum ada kategori"}
+          </p>
         </div>
       </div>
 
@@ -201,6 +210,7 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
                           <img
                             src={p.image}
                             alt={p.name}
+                            onError={handleImageError}
                             className="w-10 h-10 rounded-xl object-cover border border-slate-200 bg-slate-100"
                           />
                           <div>
@@ -273,7 +283,7 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
               >
                 <div>
                   <div className="relative h-40 bg-slate-100 overflow-hidden">
-                    <img src={p.image} alt={p.name} className="w-full h-full object-cover" />
+                    <img src={p.image} alt={p.name} onError={handleImageError} className="w-full h-full object-cover" />
                     <span
                       className={`absolute top-2 right-2 px-2.5 py-0.5 rounded-full text-[11px] font-bold shadow-xs ${
                         isLow ? "bg-red-500 text-white" : "bg-emerald-500 text-white"

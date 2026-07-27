@@ -6,6 +6,7 @@ interface GoogleWorkspaceModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSyncSheets: () => void;
+  onFetchSheets?: () => void;
   onSaveDrive: () => void;
   isSyncing: boolean;
 }
@@ -14,6 +15,7 @@ export const GoogleWorkspaceModal: React.FC<GoogleWorkspaceModalProps> = ({
   isOpen,
   onClose,
   onSyncSheets,
+  onFetchSheets,
   onSaveDrive,
   isSyncing
 }) => {
@@ -60,14 +62,27 @@ export const GoogleWorkspaceModal: React.FC<GoogleWorkspaceModalProps> = ({
                 <CheckCircle2 className="w-3 h-3 text-emerald-700" /> Terhubung
               </span>
             </div>
-            <button
-              onClick={onSyncSheets}
-              disabled={isSyncing}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl transition-colors cursor-pointer disabled:opacity-50"
-            >
-              <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? "animate-spin" : ""}`} />
-              <span>{isSyncing ? "Menyinkronkan..." : "Sinkronkan Sekarang"}</span>
-            </button>
+            <div className="flex items-center gap-2">
+              {onFetchSheets && (
+                <button
+                  onClick={onFetchSheets}
+                  disabled={isSyncing}
+                  className="flex items-center gap-1 px-2.5 py-1.5 bg-emerald-100 hover:bg-emerald-200 text-emerald-800 font-bold text-xs rounded-xl transition-colors cursor-pointer disabled:opacity-50 border border-emerald-300"
+                  title="Tarik & impor data terbaru dari Google Sheets"
+                >
+                  <RefreshCw className={`w-3 h-3 ${isSyncing ? "animate-spin" : ""}`} />
+                  <span>Tarik Data</span>
+                </button>
+              )}
+              <button
+                onClick={onSyncSheets}
+                disabled={isSyncing}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl transition-colors cursor-pointer disabled:opacity-50"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? "animate-spin" : ""}`} />
+                <span>{isSyncing ? "Menyinkronkan..." : "Sinkronkan Kirim"}</span>
+              </button>
+            </div>
           </div>
 
           <div className="space-y-2">

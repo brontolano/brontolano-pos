@@ -22,18 +22,31 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     .reduce((acc, curr) => acc + curr.grandTotal, 0);
 
   const totalTxCount = transactions.length;
-  const avgTxValue = totalTxCount > 0 ? Math.round(totalSales / totalTxCount) : 0;
+  const avgTxValue = totalTxCount > 0 && totalSales > 0 ? Math.round(totalSales / totalTxCount) : 0;
 
-  // Chart Data for 7 Days Sales Trend
-  const chartData = [
-    { day: "Sen", sales: 2800000 },
-    { day: "Sel", sales: 3400000 },
-    { day: "Rab", sales: 3100000 },
-    { day: "Kam", sales: 4200000 },
-    { day: "Jum", sales: 3800000 },
-    { day: "Sab", sales: 5100000 },
-    { day: "Min", sales: 4250000 }
-  ];
+  const totalSoldUnits = transactions
+    .filter((t) => t.status === "Sukses" || t.status === "Selesai")
+    .reduce((acc, curr) => acc + curr.items.reduce((sum, item) => sum + item.qty, 0), 0);
+
+  const uniqueCustomersCount = new Set(
+    transactions.map((t) => t.customer).filter((c) => c && c.trim() !== "" && c !== "Pelanggan Umum")
+  ).size;
+
+  // Chart Data for 7 Days Sales Trend dynamically calculated
+  const days = ["Sen", "Sel", "Rab", "Kam", "Jum", "Sab", "Min"];
+  const chartData = days.map((day, idx) => {
+    let salesForDay = 0;
+    transactions.forEach((tx) => {
+      if (tx.status === "Sukses" || tx.status === "Selesai") {
+        const txDate = tx.date ? new Date(tx.date) : new Date();
+        const dayIdx = (txDate.getDay() + 6) % 7; // Convert Sunday=0 to Monday=0
+        if (!isNaN(txDate.getTime()) && dayIdx === idx) {
+          salesForDay += tx.grandTotal;
+        }
+      }
+    });
+    return { day, sales: salesForDay };
+  });
 
   const formatRupiah = (num: number) => {
     return new Intl.NumberFormat("id-ID", {
@@ -65,9 +78,15 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           </div>
           <div className="flex items-baseline justify-between">
             <h3 className="text-2xl font-bold text-[#1954d6] tracking-tight">{formatRupiah(totalSales)}</h3>
-            <span className="inline-flex items-center text-xs font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
-              <TrendingUp className="w-3 h-3 mr-0.5" /> +12.5%
-            </span>
+            {totalSales > 0 ? (
+              <span className="inline-flex items-center text-xs font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                <TrendingUp className="w-3 h-3 mr-0.5" /> Realtime
+              </span>
+            ) : (
+              <span className="inline-flex items-center text-xs font-medium text-slate-400 bg-slate-50 px-2 py-0.5 rounded-full border border-slate-200">
+                Belum ada
+              </span>
+            )}
           </div>
         </div>
 
@@ -81,32 +100,50 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           </div>
           <div className="flex items-baseline justify-between">
             <h3 className="text-2xl font-bold text-slate-900 tracking-tight">{totalTxCount}</h3>
-            <span className="text-xs text-slate-500 font-medium">12 / jam</span>
+            <span className="text-xs text-slate-500 font-medium">
+              {totalTxCount > 0 ? `${totalSoldUnits} item terjual` : "0 struk"}
+            </span>
           </div>
         </div>
 
         {/* Stok Rendah Alert */}
-        <div className="bg-red-50/70 rounded-2xl p-4 sm:p-5 border border-red-200 shadow-xs relative">
+        <div className={`rounded-2xl p-4 sm:p-5 border shadow-xs relative transition-colors ${
+          lowStockCount > 0 
+            ? "bg-red-50/70 border-red-200" 
+            : "bg-white border-slate-200"
+        }`}>
           <div className="flex items-center justify-between mb-1">
-            <span className="text-xs font-bold text-red-800 uppercase tracking-wider">STOK RENDAH</span>
-            <AlertTriangle className="w-5 h-5 text-red-600" />
+            <span className={`text-xs font-bold uppercase tracking-wider ${
+              lowStockCount > 0 ? "text-red-800" : "text-slate-500"
+            }`}>STOK RENDAH</span>
+            <AlertTriangle className={`w-5 h-5 ${
+              lowStockCount > 0 ? "text-red-600" : "text-slate-400"
+            }`} />
           </div>
           <div className="flex items-center justify-between">
             <div>
-              <h3 className="text-2xl font-bold text-red-900 tracking-tight">
+              <h3 className={`text-2xl font-bold tracking-tight ${
+                lowStockCount > 0 ? "text-red-900" : "text-slate-900"
+              }`}>
                 {lowStockCount} Produk
               </h3>
-              <p className="text-xs text-red-700 font-medium mt-0.5">Perlu restok segera</p>
+              <p className={`text-xs font-medium mt-0.5 ${
+                lowStockCount > 0 ? "text-red-700" : "text-slate-500"
+              }`}>
+                {lowStockCount > 0 ? "Perlu restok segera" : "Stok aman terkendali"}
+              </p>
             </div>
-            <button
-              onClick={() => {
-                onFilterLowStock();
-                onNavigateTab("inventori");
-              }}
-              className="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white text-xs font-bold rounded-xl shadow-xs transition-colors cursor-pointer"
-            >
-              DETAIL
-            </button>
+            {lowStockCount > 0 && (
+              <button
+                onClick={() => {
+                  onFilterLowStock();
+                  onNavigateTab("inventori");
+                }}
+                className="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white text-xs font-bold rounded-xl shadow-xs transition-colors cursor-pointer"
+              >
+                DETAIL
+              </button>
+            )}
           </div>
         </div>
 
@@ -120,7 +157,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           </div>
           <div className="flex items-baseline justify-between">
             <h3 className="text-2xl font-bold text-slate-900 tracking-tight">{formatRupiah(avgTxValue)}</h3>
-            <span className="text-xs text-slate-500 font-medium">Target: Rp 25k</span>
+            <span className="text-xs text-slate-500 font-medium">
+              {totalTxCount > 0 ? "Rata-rata per struk" : "Belum ada transaksi"}
+            </span>
           </div>
         </div>
       </div>
@@ -140,18 +179,18 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             </div>
           </div>
 
-          <div className="h-64 w-full">
-            <ResponsiveContainer width="100%" height="100%">
+          <div className="h-64 w-full min-h-[220px]">
+            <ResponsiveContainer width="100%" height="100%" minHeight={200}>
               <BarChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                 <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: "#64748b" }} />
                 <YAxis
                   axisLine={false}
                   tickLine={false}
                   tick={{ fontSize: 11, fill: "#94a3b8" }}
-                  tickFormatter={(v) => `${(v / 1000000).toFixed(1)}M`}
+                  tickFormatter={(v: number) => (v >= 1000000 ? `${(v / 1000000).toFixed(1)}M` : v >= 1000 ? `${(v / 1000).toFixed(0)}k` : `${v}`)}
                 />
                 <Tooltip
-                  formatter={(value: number) => [formatRupiah(value), "Penjualan"]}
+                  formatter={(value: any) => [formatRupiah(Number(value) || 0), "Penjualan"]}
                   contentStyle={{ borderRadius: "12px", border: "none", boxShadow: "0 4px 12px rgba(0,0,0,0.1)" }}
                 />
                 <Bar dataKey="sales" fill="#1954d6" radius={[6, 6, 0, 0]} />
@@ -167,7 +206,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               </div>
               <div>
                 <p className="text-xs text-slate-500 uppercase font-bold">PRODUK TERJUAL</p>
-                <p className="text-lg font-bold text-slate-900">1,240 Unit</p>
+                <p className="text-lg font-bold text-slate-900">{totalSoldUnits.toLocaleString()} Unit</p>
               </div>
             </div>
             <div className="flex items-center gap-3">
@@ -175,8 +214,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 <Users className="w-5 h-5" />
               </div>
               <div>
-                <p className="text-xs text-slate-500 uppercase font-bold">MEMBER BARU</p>
-                <p className="text-lg font-bold text-slate-900">842 Member</p>
+                <p className="text-xs text-slate-500 uppercase font-bold">PELANGGAN AKTIF</p>
+                <p className="text-lg font-bold text-slate-900">{uniqueCustomersCount} Pelanggan</p>
               </div>
             </div>
           </div>
@@ -196,7 +235,12 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             </div>
 
             <div className="space-y-3">
-              {transactions.slice(0, 5).map((tx) => (
+              {transactions.length === 0 ? (
+                <div className="py-12 text-center text-slate-400 text-xs italic">
+                  Belum ada riwayat transaksi
+                </div>
+              ) : (
+                transactions.slice(0, 5).map((tx) => (
                 <div
                   key={tx.id}
                   className="p-3 bg-slate-50 hover:bg-slate-100/80 rounded-xl border border-slate-100 flex items-center justify-between transition-colors"
@@ -225,7 +269,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     </span>
                   </div>
                 </div>
-              ))}
+              ))
+              )}
             </div>
           </div>
 

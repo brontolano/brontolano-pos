@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Product } from "../types";
 import { X, Image as ImageIcon, Plus, Check, Upload, Link as LinkIcon, Trash2, FileImage, Sparkles } from "lucide-react";
+import { handleImageError } from "../utils/imageUtils";
 
 interface AddProductModalProps {
   isOpen: boolean;
@@ -389,10 +390,10 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({
             {/* TAB CONTENT 3: PRESET SAMPLES */}
             {imageTab === "preset" && (
               <div className="grid grid-cols-4 gap-2">
-                {PRESET_IMAGES.map((img, idx) => (
+                {PRESET_IMAGES.map((img) => (
                   <button
                     type="button"
-                    key={idx}
+                    key={img.url}
                     onClick={() => {
                       setImage(img.url);
                       setImageSourceLabel("Sampel Presets");
@@ -401,7 +402,7 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({
                       image === img.url ? "border-[#1954d6] ring-2 ring-blue-200" : "border-slate-200 hover:border-slate-300"
                     }`}
                   >
-                    <img src={img.url} alt={img.name} className="w-full h-full object-cover" />
+                    <img src={img.url} alt={img.name} onError={handleImageError} className="w-full h-full object-cover" />
                     {image === img.url && (
                       <div className="absolute inset-0 bg-[#1954d6]/30 flex items-center justify-center">
                         <Check className="w-5 h-5 text-white" />

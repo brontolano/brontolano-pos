@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { Product, CartItem, PaymentMethod } from "../types";
 import { Search, QrCode, Plus, Minus, ShoppingBag, Trash2, ArrowRight, X, CreditCard, Banknote, Smartphone, Check, User, FileText, ShoppingCart } from "lucide-react";
+import { handleImageError } from "../utils/imageUtils";
 
 interface POSViewProps {
   products: Product[];
@@ -135,6 +136,7 @@ export const POSView: React.FC<POSViewProps> = ({
                       <img
                         src={product.image}
                         alt={product.name}
+                        onError={handleImageError}
                         className="w-full h-full object-cover"
                       />
                       <span
@@ -252,6 +254,7 @@ export const POSView: React.FC<POSViewProps> = ({
                       <img
                         src={item.product.image}
                         alt={item.product.name}
+                        onError={handleImageError}
                         className="w-10 h-10 rounded-lg object-cover shrink-0 border border-slate-200"
                       />
                       <div className="min-w-0 flex-1">
@@ -465,6 +468,7 @@ export const POSView: React.FC<POSViewProps> = ({
                         <img
                           src={item.product.image}
                           alt={item.product.name}
+                          onError={handleImageError}
                           className="w-9 h-9 rounded-lg object-cover"
                         />
                         <div>
@@ -558,9 +562,9 @@ export const POSView: React.FC<POSViewProps> = ({
                     Uang Diterima
                   </label>
                   <div className="flex gap-2">
-                    {[grandTotal, 50000, 100000, 200000, 500000].map((nom) => (
+                    {Array.from(new Set([grandTotal, 50000, 100000, 200000, 500000])).map((nom, idx) => (
                       <button
-                        key={nom}
+                        key={`${nom}-${idx}`}
                         type="button"
                         onClick={() => setCashAmount(nom)}
                         className="flex-1 py-1.5 px-2 bg-slate-100 hover:bg-blue-50 text-slate-800 text-xs font-bold rounded-lg border border-slate-200 cursor-pointer"

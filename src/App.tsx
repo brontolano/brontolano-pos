@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
-import { Product, Transaction, CartItem, NavigationTab, PaymentMethod, StoreSettings, AppUser } from "./types";
-import { INITIAL_PRODUCTS, INITIAL_TRANSACTIONS, CATEGORIES, INITIAL_USERS } from "./data/initialData";
+import { Product, Transaction, CartItem, NavigationTab, PaymentMethod, StoreSettings, AppUser, Customer } from "./types";
+import { INITIAL_PRODUCTS, INITIAL_TRANSACTIONS, CATEGORIES, INITIAL_USERS, INITIAL_CUSTOMERS } from "./data/initialData";
+import { syncWorker, SyncWorkerState } from "./utils/syncWorker";
 import { Header } from "./components/Header";
 import { Navigation } from "./components/Navigation";
 import { DashboardView } from "./components/DashboardView";
@@ -32,12 +33,12 @@ const DEFAULT_SETTINGS: StoreSettings = {
   enableTransfer: true,
   bankAccountInfo: "BCA 8830192831 a/n Brontolano POS",
 
-  spreadsheetId: "1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms",
+  spreadsheetId: "1NC-bEJ98ysh-6Fc0ZpE2KOWdEsvk4cqqlJU8Pap7oAs",
   sheetName: "Transaksi_Brontolano",
   autoSyncSheets: true,
-  driveFolderId: "1FolderBrontolanoPOSReceiptsEnterprise2024",
+  driveFolderId: "1OliH3aYcmj6VeF4aw83W6CEETR7T_FcN",
   autoSaveDriveReceipts: true,
-  webAppUrl: "https://script.google.com/macros/s/AKfycbxBrontolanoPOSAppsScriptIntegration/exec",
+  webAppUrl: "https://script.google.com/macros/s/AKfycbwn6_umqavZibkfX3sCRkOADk8epcpP7DbnR7Wyhbe4xy7yxtB-KTaYzLp91dswlKAg/exec",
 
   // User Profile Default
   userName: "Hamdan Sumedang",
@@ -73,6 +74,17 @@ export const App: React.FC = () => {
     return INITIAL_TRANSACTIONS;
   });
 
+  const [customers, setCustomers] = useState<Customer[]>(() => {
+    const saved = localStorage.getItem("brontolano_customers");
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) return parsed;
+      } catch (e) {}
+    }
+    return INITIAL_CUSTOMERS;
+  });
+
   useEffect(() => {
     localStorage.setItem("brontolano_products", JSON.stringify(products));
   }, [products]);
@@ -80,6 +92,10 @@ export const App: React.FC = () => {
   useEffect(() => {
     localStorage.setItem("brontolano_transactions", JSON.stringify(transactions));
   }, [transactions]);
+
+  useEffect(() => {
+    localStorage.setItem("brontolano_customers", JSON.stringify(customers));
+  }, [customers]);
   const [cart, setCart] = useState<CartItem[]>([]);
 
   // Users Management & Authentication State
@@ -110,7 +126,17 @@ export const App: React.FC = () => {
     const saved = localStorage.getItem("brontolano_settings");
     if (saved) {
       try {
-        return JSON.parse(saved);
+        const parsed = JSON.parse(saved);
+        if (!parsed.webAppUrl || parsed.webAppUrl.includes("BrontolanoPOSAppsScriptIntegration") || parsed.webAppUrl.includes("AKfycbwc3C0oBySChT4ZkXqKkS23lA_p3Uv8kY8i5W4o")) {
+          parsed.webAppUrl = DEFAULT_SETTINGS.webAppUrl;
+        }
+        if (!parsed.spreadsheetId || parsed.spreadsheetId === "1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms") {
+          parsed.spreadsheetId = DEFAULT_SETTINGS.spreadsheetId;
+        }
+        if (!parsed.driveFolderId || parsed.driveFolderId === "1FolderBrontolanoPOSReceiptsEnterprise2024" || parsed.driveFolderId === "1rmK3r-n3ogzygOO9LrM_UQjvB3DN3I00") {
+          parsed.driveFolderId = DEFAULT_SETTINGS.driveFolderId;
+        }
+        return parsed;
       } catch (e) {
         // Fallback to default
       }
@@ -189,6 +215,25 @@ export const App: React.FC = () => {
   const handleSaveSettings = (newSettings: StoreSettings) => {
     setSettings(newSettings);
     localStorage.setItem("brontolano_settings", JSON.stringify(newSettings));
+    
+    fetch("/api/settings", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(newSettings)
+    }).catch((err) => console.error("Server save settings error:", err));
+
+    if (newSettings.webAppUrl) {
+      fetch("/api/sheets/sync", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          webAppUrl: newSettings.webAppUrl,
+          spreadsheetId: newSettings.spreadsheetId,
+          action: "syncSettings",
+          settings: newSettings
+        })
+      }).catch((err) => console.error("Sheets sync settings error:", err));
+    }
     showToast("Pengaturan toko berhasil diperbarui!");
   };
 
@@ -231,13 +276,21 @@ export const App: React.FC = () => {
   };
 
   const handleResetDemoData = () => {
-    if (window.confirm("Apakah Anda yakin ingin mengembalikan seluruh data produk & transaksi ke data demo awal?")) {
-      setProducts(INITIAL_PRODUCTS);
-      setTransactions(INITIAL_TRANSACTIONS);
-      setSettings(DEFAULT_SETTINGS);
-      localStorage.removeItem("brontolano_settings");
-      showToast("Data telah dikembalikan ke kondisi demo awal.");
-    }
+    // Explicitly clear and overwrite localStorage keys for products and transactions
+    localStorage.removeItem("brontolano_products");
+    localStorage.removeItem("brontolano_transactions");
+    localStorage.setItem("brontolano_products", JSON.stringify([]));
+    localStorage.setItem("brontolano_transactions", JSON.stringify([]));
+
+    // Clear active sync queue
+    syncWorker.clearQueue();
+
+    // Reset application state
+    setCart([]);
+    setProducts([]);
+    setTransactions([]);
+
+    showToast("Seluruh data transaksi dan produk telah dibersihkan (Clear Data).");
   };
 
   // Search & Filters
@@ -278,6 +331,51 @@ export const App: React.FC = () => {
       })
       .catch((err) => console.log("Using local transactions", err));
   }, []);
+
+  // Start background sync worker on mount
+  useEffect(() => {
+    syncWorker.startAutoSync(settings.webAppUrl, 10000);
+    return () => {
+      syncWorker.stopAutoSync();
+    };
+  }, [settings.webAppUrl]);
+
+  // Live Sync Status & Metrics Polling State (WebSocket-like background listener)
+  const [liveSyncMetrics, setLiveSyncMetrics] = useState({
+    categoriesCount: 0,
+    totalTransactions: 0,
+    newCustomersCount: 0,
+    avgBasketSize: 0,
+    lastSyncedAt: new Date(),
+    isLiveConnected: true
+  });
+
+  useEffect(() => {
+    const checkSheetsSync = async () => {
+      try {
+        const res = await fetch("/api/sheets/sync-status");
+        if (res.ok) {
+          const data = await res.json();
+          if (data && data.metrics) {
+            setLiveSyncMetrics({
+              categoriesCount: data.metrics.categoriesCount ?? new Set(products.map(p => p.category)).size,
+              totalTransactions: data.metrics.totalTransactions ?? transactions.length,
+              newCustomersCount: data.metrics.newCustomersCount ?? new Set(transactions.map(t => t.customer).filter(c => c && c.trim() !== "" && c !== "Pelanggan Umum")).size,
+              avgBasketSize: data.metrics.avgBasketSize ?? (transactions.length > 0 ? Math.round(transactions.reduce((sum, t) => sum + t.grandTotal, 0) / transactions.length) : 0),
+              lastSyncedAt: new Date(data.lastSyncedAt || Date.now()),
+              isLiveConnected: true
+            });
+          }
+        }
+      } catch (e) {
+        console.log("Polling background check fallback", e);
+      }
+    };
+
+    checkSheetsSync();
+    const interval = setInterval(checkSheetsSync, 10000);
+    return () => clearInterval(interval);
+  }, [products, transactions]);
 
   // Cart Functions
   const handleAddToCart = (product: Product) => {
@@ -366,6 +464,9 @@ export const App: React.FC = () => {
     setCart([]);
     setCompletedTransaction(newTx);
 
+    // Enqueue transaction in background sync worker for automatic retries & persistence
+    syncWorker.addToQueue("transaction", newTx);
+
     // Sync back to Express server
     fetch("/api/transactions", {
       method: "POST",
@@ -377,26 +478,32 @@ export const App: React.FC = () => {
   // Product Add / Edit
   const handleSaveProduct = (prodData: Omit<Product, "id" | "status">, editingId?: string) => {
     if (editingId) {
+      const updatedProd: Product = {
+        id: editingId,
+        ...prodData,
+        status: prodData.stock <= prodData.minStock ? "Kritis" : prodData.stock <= prodData.minStock * 2 ? "Menengah" : "Aman"
+      };
+
       setProducts((prev) =>
-        prev.map((p) =>
-          p.id === editingId
-            ? {
-                ...p,
-                ...prodData,
-                status: prodData.stock <= prodData.minStock ? "Kritis" : "Aman"
-              }
-            : p
-        )
+        prev.map((p) => (p.id === editingId ? updatedProd : p))
       );
       showToast(`Produk diperbarui: ${prodData.name}`);
+      syncWorker.addToQueue("product", updatedProd);
+
+      fetch(`/api/products/${editingId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(updatedProd)
+      }).catch((err) => console.error(err));
     } else {
       const newProd: Product = {
         id: "prod-" + Date.now().toString(36),
         ...prodData,
-        status: prodData.stock <= prodData.minStock ? "Kritis" : "Aman"
+        status: prodData.stock <= prodData.minStock ? "Kritis" : prodData.stock <= prodData.minStock * 2 ? "Menengah" : "Aman"
       };
       setProducts((prev) => [newProd, ...prev]);
       showToast(`Produk baru ditambahkan: ${prodData.name}`);
+      syncWorker.addToQueue("product", newProd);
 
       fetch("/api/products", {
         method: "POST",
@@ -407,34 +514,102 @@ export const App: React.FC = () => {
   };
 
   const handleDeleteProduct = (productId: string) => {
-    setProducts((prev) => prev.filter((p) => p.id !== productId));
+    setProducts((prev) => {
+      const nextProds = prev.filter((p) => p.id !== productId);
+      // Sync remaining products to Sheets
+      if (settings.webAppUrl) {
+        fetch("/api/sheets/sync", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            webAppUrl: settings.webAppUrl,
+            action: "syncProducts",
+            products: nextProds
+          })
+        }).catch((err) => console.error("Sheets sync delete error:", err));
+      }
+      return nextProds;
+    });
+
     showToast("Produk berhasil dihapus dari inventori");
+
+    fetch(`/api/products/${productId}`, {
+      method: "DELETE"
+    }).catch((err) => console.error("Server delete error:", err));
   };
 
   // Google Sheets & Drive Sync
   const handleSyncToSheets = async () => {
     setIsSyncingSheets(true);
-    
-    // Clear demo transactions so only real active user transactions are stored & used
-    const realTransactions = transactions.filter(
-      (tx) => !INITIAL_TRANSACTIONS.some((demo) => demo.id === tx.id)
-    );
-    setTransactions(realTransactions);
-    localStorage.setItem("brontolano_transactions", JSON.stringify(realTransactions));
 
     try {
-      const res = await fetch("/api/sheets/sync", {
+      const response = await fetch("/api/sheets/sync", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          sheetName: settings.sheetName || "Transaksi_Brontolano",
-          transactions: realTransactions
+          webAppUrl: settings.webAppUrl,
+          spreadsheetId: settings.spreadsheetId,
+          driveFolderId: settings.driveFolderId,
+          action: "syncAll",
+          products,
+          transactions,
+          customers,
+          settings
+        })
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        showToast("Sinkronisasi Cloud Berhasil! Data produk, transaksi & pelanggan telah diperbarui di Google Sheets.");
+      } else {
+        syncWorker.addToQueue("product", products);
+        if (transactions.length > 0) syncWorker.addToQueue("transaction", transactions);
+        await syncWorker.processQueue(settings.webAppUrl);
+        showToast("Proses antrean sinkronisasi berjalan di latar belakang.");
+      }
+    } catch (err) {
+      syncWorker.addToQueue("product", products);
+      if (transactions.length > 0) syncWorker.addToQueue("transaction", transactions);
+      await syncWorker.processQueue(settings.webAppUrl);
+      showToast("Proses antrean sinkronisasi berjalan di latar belakang.");
+    } finally {
+      setIsSyncingSheets(false);
+    }
+  };
+
+  // Fetch Live Data from Google Sheets
+  const handleFetchFromSheets = async () => {
+    if (!settings.webAppUrl) {
+      showToast("Konfigurasikan Web App URL Google Apps Script di Pengaturan Toko terlebih dahulu.");
+      return;
+    }
+    setIsSyncingSheets(true);
+    try {
+      const res = await fetch("/api/sheets/fetch", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          webAppUrl: settings.webAppUrl,
+          spreadsheetId: settings.spreadsheetId
         })
       });
       const data = await res.json();
-      showToast("Sinkronisasi Berhasil! Data demo telah dibersihkan dan data asli digunakan.");
-    } catch (err) {
-      showToast("Sinkronisasi Berhasil! Data demo telah dibersihkan dan data asli digunakan.");
+      if (data.success && data.data) {
+        if (Array.isArray(data.data.products) && data.data.products.length > 0) {
+          setProducts(data.data.products);
+        }
+        if (Array.isArray(data.data.transactions) && data.data.transactions.length > 0) {
+          setTransactions(data.data.transactions);
+        }
+        if (Array.isArray(data.data.customers) && data.data.customers.length > 0) {
+          setCustomers(data.data.customers);
+        }
+        showToast("Berhasil menarik & memperbarui data terbaru dari Google Sheets!");
+      } else {
+        showToast(data.message || "Gagal menarik data dari Google Sheets.");
+      }
+    } catch (err: any) {
+      showToast("Terjadi kesalahan saat menarik data: " + (err?.message || String(err)));
     } finally {
       setIsSyncingSheets(false);
     }
@@ -484,6 +659,13 @@ export const App: React.FC = () => {
         onSearchChange={setGlobalSearch}
         onOpenSettings={() => setActiveTab("pengaturan")}
         onLogout={handleLogout}
+        products={products}
+        transactions={transactions}
+        settings={settings}
+        onNavigateTab={(tab, filterLowStock) => {
+          setActiveTab(tab);
+          if (filterLowStock) setFilterLowStockOnly(true);
+        }}
       />
 
       {/* Navigation Tabs */}
@@ -558,6 +740,7 @@ export const App: React.FC = () => {
             settings={settings}
             onSaveSettings={handleSaveSettings}
             onSyncSheets={handleSyncToSheets}
+            onFetchSheets={handleFetchFromSheets}
             onResetDemoData={handleResetDemoData}
             onExportData={handleExportData}
             onImportData={handleImportData}

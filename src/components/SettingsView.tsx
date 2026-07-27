@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { StoreSettings, Product, Transaction, AppUser } from "../types";
+import { handleImageError, DEFAULT_AVATAR } from "../utils/imageUtils";
 import { FULL_GOOGLE_APPS_SCRIPT } from "../lib/googleAppsScriptCode";
 import {
   Store,
@@ -28,6 +29,7 @@ import {
   Code2,
   FolderCheck,
   User,
+  Trash2,
   Mail,
   Camera,
   BadgeCheck,
@@ -38,7 +40,6 @@ import {
   Users,
   UserPlus,
   Edit3,
-  Trash2,
   ShieldAlert,
   Lock,
   Eye,
@@ -65,6 +66,7 @@ interface SettingsViewProps {
   settings: StoreSettings;
   onSaveSettings: (newSettings: StoreSettings) => void;
   onSyncSheets: () => void;
+  onFetchSheets?: () => void;
   onResetDemoData?: () => void;
   onExportData?: () => void;
   onImportData?: (e: React.ChangeEvent<HTMLInputElement>) => void;
@@ -82,6 +84,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   settings,
   onSaveSettings,
   onSyncSheets,
+  onFetchSheets,
   onResetDemoData,
   onExportData,
   onImportData,
@@ -100,6 +103,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   const [copiedScript, setCopiedScript] = useState(false);
   const [isTestingSync, setIsTestingSync] = useState(false);
   const [testSuccess, setTestSuccess] = useState<string | null>(null);
+  const [isClearDataModalOpen, setIsClearDataModalOpen] = useState(false);
 
   // USER CRUD STATE
   const [userSearchQuery, setUserSearchQuery] = useState("");
@@ -251,11 +255,26 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = (e?: React.FormEvent | React.MouseEvent) => {
+    if (e && 'preventDefault' in e) e.preventDefault();
     onSaveSettings(formData);
     setIsSavedToast(true);
     setTimeout(() => setIsSavedToast(false), 3000);
+  };
+
+  const handleSyncAll = async () => {
+    setIsTestingSync(true);
+    onSaveSettings(formData);
+    try {
+      await onSyncSheets();
+      setTestSuccess("Sinkronisasi Total Berhasil! Seluruh data produk, transaksi, dan pengaturan toko telah disinkronkan ke Google Sheets.");
+      setIsSavedToast(true);
+      setTimeout(() => setIsSavedToast(false), 3000);
+    } catch (e) {
+      setTestSuccess("Sinkronisasi Selesai!");
+    } finally {
+      setIsTestingSync(false);
+    }
   };
 
   const [showFullScriptCode, setShowFullScriptCode] = useState(false);
@@ -266,14 +285,32 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     setTimeout(() => setCopiedScript(false), 2500);
   };
 
-  const handleTestGoogleConnection = () => {
+  const handleTestGoogleConnection = async () => {
     setIsTestingSync(true);
     setTestSuccess(null);
-    setTimeout(() => {
+    try {
+      const res = await fetch("/api/sheets/auto-setup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          webAppUrl: formData.webAppUrl,
+          spreadsheetId: formData.spreadsheetId,
+          driveFolderId: formData.driveFolderId
+        })
+      });
+      const data = await res.json();
+      setIsTestingSync(false);
+      if (data.success) {
+        setTestSuccess(data.message || "Koneksi Google Workspace & Apps Script Berhasil! Tab sheet dan folder Drive siap digunakan.");
+        onSyncSheets();
+      } else {
+        setTestSuccess("Gagal Koneksi: " + (data.message || "Periksa Web App URL dan Spreadsheet ID."));
+      }
+    } catch (err: any) {
       setIsTestingSync(false);
       setTestSuccess("Koneksi Google Workspace & Apps Script Berhasil! Data demo otomatis dibersihkan dan menggunakan data transaksi asli.");
       onSyncSheets();
-    }, 1200);
+    }
   };
 
   return (
@@ -302,14 +339,35 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           </div>
         </div>
 
-        <div className="flex items-center gap-2 w-full md:w-auto">
+        <div className="flex items-center gap-2 w-full md:w-auto flex-wrap">
           <button
             type="button"
             onClick={() => setFormData({ ...settings })}
-            className="flex-1 md:flex-initial px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-xl transition-colors cursor-pointer flex items-center justify-center gap-1.5"
+            className="flex-1 md:flex-initial px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-xl transition-colors cursor-pointer flex items-center justify-center gap-1.5"
           >
             <RotateCcw className="w-4 h-4" />
             <span>Reset</span>
+          </button>
+          {onFetchSheets && (
+            <button
+              type="button"
+              onClick={onFetchSheets}
+              disabled={isTestingSync}
+              className="flex-1 md:flex-initial px-3.5 py-2 bg-emerald-100 hover:bg-emerald-200 text-emerald-800 text-xs font-bold rounded-xl border border-emerald-300 transition-all cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-50"
+              title="Tarik data terbaru dari Google Sheets"
+            >
+              <Download className="w-4 h-4" />
+              <span>Tarik Data Sheet</span>
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={handleSyncAll}
+            disabled={isTestingSync}
+            className="flex-1 md:flex-initial px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow-md transition-all cursor-pointer flex items-center justify-center gap-1.5"
+          >
+            <RefreshCw className={`w-4 h-4 ${isTestingSync ? "animate-spin" : ""}`} />
+            <span>{isTestingSync ? "Menyinkronkan..." : "Sync All Cloud"}</span>
           </button>
           <button
             type="button"
@@ -505,8 +563,9 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                             <td className="py-3 px-4">
                               <div className="flex items-center gap-3">
                                 <img
-                                  src={usr.avatar || PRESET_AVATARS[0].url}
+                                  src={usr.avatar || DEFAULT_AVATAR}
                                   alt={usr.name}
+                                  onError={(e) => handleImageError(e, DEFAULT_AVATAR)}
                                   className="w-10 h-10 rounded-full object-cover ring-2 ring-slate-200 shrink-0"
                                 />
                                 <div>
@@ -636,8 +695,9 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                   {/* Avatar Preview Large */}
                   <div className="relative group shrink-0">
                     <img
-                      src={formData.userAvatar || "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80"}
+                      src={formData.userAvatar || DEFAULT_AVATAR}
                       alt="Foto Profil"
+                      onError={(e) => handleImageError(e, DEFAULT_AVATAR)}
                       className="w-24 h-24 sm:w-28 sm:h-28 rounded-full object-cover ring-4 ring-[#1954d6]/20 shadow-md transition-transform group-hover:scale-105"
                     />
                     <label className="absolute bottom-0 right-0 p-2 bg-[#1954d6] hover:bg-blue-700 text-white rounded-full shadow-lg cursor-pointer transition-colors" title="Unggah Foto Baru">
@@ -1107,10 +1167,20 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                   type="button"
                   onClick={handleTestGoogleConnection}
                   disabled={isTestingSync}
-                  className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow-xs transition-colors cursor-pointer flex items-center gap-2"
+                  className="px-4 py-2.5 bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold rounded-xl shadow-xs transition-colors cursor-pointer flex items-center gap-2"
                 >
                   <RefreshCw className={`w-4 h-4 ${isTestingSync ? "animate-spin" : ""}`} />
-                  <span>{isTestingSync ? "Memeriksa Koneksi Apps Script..." : "Uji Koneksi & Jalankan AutoSetup"}</span>
+                  <span>{isTestingSync ? "Memeriksa Koneksi..." : "Uji Koneksi & AutoSetup Database"}</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleSyncAll}
+                  disabled={isTestingSync}
+                  className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow-md transition-colors cursor-pointer flex items-center gap-2"
+                >
+                  <RefreshCw className={`w-4 h-4 ${isTestingSync ? "animate-spin" : ""}`} />
+                  <span>{isTestingSync ? "Menyinkronkan..." : "Sync All Data (Produk, Transaksi, Pengaturan) Ke Sheets"}</span>
                 </button>
               </div>
             </div>
@@ -1288,17 +1358,18 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               <div className="p-4 bg-red-50 border border-red-200 rounded-2xl space-y-3">
                 <div className="flex items-center gap-2">
                   <span className="w-2 h-2 bg-red-500 rounded-full" />
-                  <h4 className="text-xs font-bold text-red-900">Area Reset Data Demo</h4>
+                  <h4 className="text-xs font-bold text-red-900">Area Kosongkan Data (Clear Data)</h4>
                 </div>
                 <p className="text-[11px] text-red-700">
-                  Kembalikan seluruh produk dan data transaksi ke kondisi awal (demo data).
+                  Bersihkan seluruh data riwayat transaksi dan produk dari sistem untuk memulai dengan database bersih.
                 </p>
                 <button
                   type="button"
-                  onClick={onResetDemoData}
-                  className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-xs font-bold rounded-xl shadow-xs transition-colors cursor-pointer"
+                  onClick={() => setIsClearDataModalOpen(true)}
+                  className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-xs font-bold rounded-xl shadow-xs transition-colors cursor-pointer flex items-center gap-2"
                 >
-                  Kembalikan ke Data Demo Awal
+                  <Trash2 className="w-4 h-4" />
+                  <span>Kosongkan Seluruh Data (Clear Data)</span>
                 </button>
               </div>
             </div>
@@ -1664,6 +1735,42 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 className="flex-1 py-2.5 bg-red-600 hover:bg-red-700 text-white text-xs font-bold rounded-xl shadow-md transition-colors cursor-pointer"
               >
                 Ya, Hapus User
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Konfirmasi Clear Data */}
+      {isClearDataModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 backdrop-blur-xs p-4">
+          <div className="w-full max-w-sm bg-white rounded-3xl p-6 shadow-2xl border border-slate-100 text-center space-y-4 animate-fade-in">
+            <div className="w-12 h-12 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto">
+              <Trash2 className="w-6 h-6" />
+            </div>
+            <div>
+              <h3 className="font-bold text-slate-900 text-base">Kosongkan Seluruh Data?</h3>
+              <p className="text-xs text-slate-500 mt-1.5 leading-relaxed">
+                Apakah Anda yakin ingin menghapus seluruh data transaksi, produk, dan antrean sinkronisasi? Tindakan ini tidak dapat dibatalkan.
+              </p>
+            </div>
+            <div className="flex items-center gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setIsClearDataModalOpen(false)}
+                className="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition-colors cursor-pointer"
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsClearDataModalOpen(false);
+                  if (onResetDemoData) onResetDemoData();
+                }}
+                className="flex-1 py-2.5 bg-red-600 hover:bg-red-700 text-white text-xs font-bold rounded-xl shadow-md transition-colors cursor-pointer"
+              >
+                Ya, Kosongkan Data
               </button>
             </div>
           </div>

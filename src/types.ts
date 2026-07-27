@@ -111,3 +111,43 @@ export interface AppUser {
   isActive: boolean;
   createdAt: string;
 }
+
+export interface Customer {
+  id: string;
+  name: string;
+  phone: string;
+  email: string;
+  address?: string;
+  memberTier: "Bronze" | "Silver" | "Gold" | "Platinum";
+  points: number;
+  totalSpent: number;
+  lastVisit: string;
+}
+
+export interface Supplier {
+  id: string;
+  companyName: string;
+  contactPerson: string;
+  phone: string;
+  email: string;
+  categorySupplied: string;
+  address: string;
+}
+
+export interface ProductTemplate {
+  name: string;
+  sku: string;
+  category: string;
+  price: number;
+  costPrice: number;
+  stock: number;
+  minStock: number;
+  image: string;
+  status: StockStatus;
+}
+
+export interface ExportHeaderTemplate {
+  key: string;
+  label: string;
+}
+

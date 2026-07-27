@@ -29,9 +29,17 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
     return matchesSearch && matchesStatus;
   });
 
-  const totalOmzet = transactions
-    .filter((t) => t.status === "Sukses" || t.status === "Selesai")
-    .reduce((acc, t) => acc + t.grandTotal, 0);
+  const successfulTxs = transactions.filter((t) => t.status === "Sukses" || t.status === "Selesai");
+  const totalOmzet = successfulTxs.reduce((acc, t) => acc + t.grandTotal, 0);
+  const totalItemsSold = successfulTxs.reduce((acc, t) => acc + t.items.reduce((s, i) => s + i.qty, 0), 0);
+  const uniqueCustomersCount = new Set(
+    transactions.map((t) => t.customer).filter((c) => c && c.trim() !== "" && c !== "Pelanggan Umum")
+  ).size;
+  const avgCartValue = transactions.length > 0 && totalOmzet > 0 ? Math.round(totalOmzet / transactions.length) : 0;
+  const avgItemsPerTx = transactions.length > 0 ? (totalItemsSold / transactions.length).toFixed(1) : "0";
+  const successRateStr = transactions.length > 0 
+    ? `${((successfulTxs.length / transactions.length) * 100).toFixed(0)}% Sukses` 
+    : "Belum ada";
 
   const formatRupiah = (num: number) => {
     return new Intl.NumberFormat("id-ID", {
@@ -95,23 +103,23 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
           <p className="text-xs font-bold text-slate-500 uppercase">TOTAL TRANSAKSI</p>
-          <h3 className="text-2xl font-bold text-slate-900 mt-1">{transactions.length + 137}</h3>
-          <p className="text-xs text-emerald-600 font-semibold mt-1">98.2% Sukses</p>
+          <h3 className="text-2xl font-bold text-slate-900 mt-1">{transactions.length} Struk</h3>
+          <p className="text-xs text-emerald-600 font-semibold mt-1">{successRateStr}</p>
         </div>
         <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
           <p className="text-xs font-bold text-slate-500 uppercase">TOTAL OMZET</p>
           <h3 className="text-2xl font-bold text-[#1954d6] mt-1">{formatRupiah(totalOmzet)}</h3>
-          <p className="text-xs text-slate-500 mt-1">Grosir & Eceran</p>
+          <p className="text-xs text-slate-500 mt-1">{transactions.length > 0 ? "Grosir & Eceran" : "Belum ada omzet"}</p>
         </div>
         <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
-          <p className="text-xs font-bold text-slate-500 uppercase">PELANGGAN BARU</p>
-          <h3 className="text-2xl font-bold text-slate-900 mt-1">84 Orang</h3>
-          <p className="text-xs text-slate-500 mt-1">+14% dari minggu lalu</p>
+          <p className="text-xs font-bold text-slate-500 uppercase">PELANGGAN AKTIF</p>
+          <h3 className="text-2xl font-bold text-slate-900 mt-1">{uniqueCustomersCount} Orang</h3>
+          <p className="text-xs text-slate-500 mt-1">{uniqueCustomersCount > 0 ? "Pelanggan Terdaftar" : "Belum ada pelanggan"}</p>
         </div>
         <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
           <p className="text-xs font-bold text-slate-500 uppercase">AVG. KERANJANG</p>
-          <h3 className="text-2xl font-bold text-slate-900 mt-1">Rp 172.500</h3>
-          <p className="text-xs text-slate-500 mt-1">2.8 Item / Transaksi</p>
+          <h3 className="text-2xl font-bold text-slate-900 mt-1">{formatRupiah(avgCartValue)}</h3>
+          <p className="text-xs text-slate-500 mt-1">{transactions.length > 0 ? `${avgItemsPerTx} Item / Transaksi` : "Belum ada data"}</p>
         </div>
       </div>
 
@@ -171,7 +179,14 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 text-sm">
-              {filteredTxs.map((tx) => (
+              {filteredTxs.length === 0 ? (
+                <tr>
+                  <td colSpan={8} className="py-8 text-center text-slate-400 text-xs italic">
+                    Belum ada riwayat transaksi
+                  </td>
+                </tr>
+              ) : (
+                filteredTxs.map((tx) => (
                 <tr key={tx.id} className="hover:bg-slate-50/80 transition-colors">
                   <td className="py-3.5 px-4 font-mono font-bold text-[#1954d6]">{tx.id}</td>
                   <td className="py-3.5 px-4 text-xs text-slate-600">
@@ -216,7 +231,8 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
                     </button>
                   </td>
                 </tr>
-              ))}
+              ))
+              )}
             </tbody>
           </table>
         </div>

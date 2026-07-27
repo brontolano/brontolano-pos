@@ -20,8 +20,14 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
     .filter((t) => t.status === "Sukses" || t.status === "Selesai")
     .reduce((acc, t) => acc + t.grandTotal, 0);
 
+  const totalSoldUnits = transactions
+    .filter((t) => t.status === "Sukses" || t.status === "Selesai")
+    .reduce((acc, t) => acc + t.items.reduce((sum, i) => sum + i.qty, 0), 0);
+
   const grossProfit = Math.round(totalRevenue * 0.6);
   const netProfit = Math.round(totalRevenue * 0.45);
+
+  const avgUnitsPerDay = Math.round(totalSoldUnits / (period === "Harian" ? 1 : period === "Mingguan" ? 7 : 30));
 
   const chartData = [
     { name: "Minggu 1", revenue: Math.round(totalRevenue * 0.2), profit: Math.round(netProfit * 0.2) },
@@ -107,27 +113,74 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
         <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs">
           <p className="text-xs font-bold text-slate-500 uppercase">TOTAL OMZET</p>
           <h3 className="text-2xl font-bold text-[#1954d6] mt-1">{formatRupiah(totalRevenue)}</h3>
-          <span className="inline-flex items-center text-xs font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full mt-2">
-            <TrendingUp className="w-3 h-3 mr-1" /> +18.4% MoM
-          </span>
+          {totalRevenue > 0 ? (
+            <span className="inline-flex items-center text-xs font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full mt-2">
+              <TrendingUp className="w-3 h-3 mr-1" /> Realtime
+            </span>
+          ) : (
+            <p className="text-xs text-slate-400 mt-2 font-medium">Belum ada omzet</p>
+          )}
         </div>
 
         <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs">
           <p className="text-xs font-bold text-slate-500 uppercase">LABA KOTOR</p>
           <h3 className="text-2xl font-bold text-emerald-600 mt-1">{formatRupiah(grossProfit)}</h3>
-          <p className="text-xs text-slate-500 mt-2 font-medium">Margin Kotor: 60.6%</p>
+          <p className="text-xs text-slate-500 mt-2 font-medium">
+            {totalRevenue > 0 ? "Margin Kotor: 60%" : "Belum ada transaksi"}
+          </p>
         </div>
 
         <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs">
           <p className="text-xs font-bold text-slate-500 uppercase">LABA BERSIH</p>
           <h3 className="text-2xl font-bold text-indigo-600 mt-1">{formatRupiah(netProfit)}</h3>
-          <p className="text-xs text-slate-500 mt-2 font-medium">Setelah Biaya Ops.</p>
+          <p className="text-xs text-slate-500 mt-2 font-medium">
+            {totalRevenue > 0 ? "Setelah Biaya Ops." : "Belum ada transaksi"}
+          </p>
         </div>
 
         <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs">
           <p className="text-xs font-bold text-slate-500 uppercase">PRODUK TERJUAL</p>
-          <h3 className="text-2xl font-bold text-slate-900 mt-1">1,240 Unit</h3>
-          <p className="text-xs text-slate-500 mt-2 font-medium">Rata-rata 41 Unit/hari</p>
+          <h3 className="text-2xl font-bold text-slate-900 mt-1">{totalSoldUnits.toLocaleString()} Unit</h3>
+          <p className="text-xs text-slate-500 mt-2 font-medium">
+            {totalSoldUnits > 0 ? `Rata-rata ${avgUnitsPerDay} Unit/${period.toLowerCase()}` : "0 Unit terjual"}
+          </p>
+        </div>
+      </div>
+
+      {/* Synchronized Operational Metrics */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="bg-blue-50/50 p-4 rounded-2xl border border-blue-100">
+          <p className="text-xs font-bold text-[#1954d6] uppercase tracking-wider">TOTAL TRANSAKSI</p>
+          <h4 className="text-xl font-extrabold text-slate-900 mt-1">
+            {transactions.length} Transaksi
+          </h4>
+          <p className="text-[11px] text-slate-500 mt-1 font-medium">Terhubung Google Sheets</p>
+        </div>
+
+        <div className="bg-emerald-50/50 p-4 rounded-2xl border border-emerald-100">
+          <p className="text-xs font-bold text-emerald-800 uppercase tracking-wider">PELANGGAN AKTIF</p>
+          <h4 className="text-xl font-extrabold text-slate-900 mt-1">
+            {new Set(transactions.map((t) => t.customer).filter((c) => c && c.trim() !== "" && c !== "Pelanggan Umum")).size} Orang
+          </h4>
+          <p className="text-[11px] text-slate-500 mt-1 font-medium">Member & Pelanggan Aktif</p>
+        </div>
+
+        <div className="bg-purple-50/50 p-4 rounded-2xl border border-purple-100">
+          <p className="text-xs font-bold text-purple-800 uppercase tracking-wider">AVG. KERANJANG</p>
+          <h4 className="text-xl font-extrabold text-slate-900 mt-1">
+            {formatRupiah(transactions.length > 0 && totalRevenue > 0 ? Math.round(totalRevenue / transactions.length) : 0)}
+          </h4>
+          <p className="text-[11px] text-slate-500 mt-1 font-medium">Rata-rata per struk belanja</p>
+        </div>
+
+        <div className="bg-amber-50/50 p-4 rounded-2xl border border-amber-100">
+          <p className="text-xs font-bold text-amber-800 uppercase tracking-wider">KATEGORI PRODUK</p>
+          <h4 className="text-xl font-extrabold text-slate-900 mt-1">
+            {products.length > 0 ? new Set(products.map((p) => p.category)).size : 0} Group
+          </h4>
+          <p className="text-[11px] text-amber-800 font-semibold mt-1">
+            {products.length > 0 ? "Terorganisir Baik" : "Belum ada produk"}
+          </p>
         </div>
       </div>
 
@@ -141,8 +194,8 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
               <p className="text-xs text-slate-500">Perbandingan Omzet vs Laba Bersih</p>
             </div>
           </div>
-          <div className="h-64 w-full">
-            <ResponsiveContainer width="100%" height="100%">
+          <div className="h-64 w-full min-h-[220px]">
+            <ResponsiveContainer width="100%" height="100%" minHeight={200}>
               <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                 <defs>
                   <linearGradient id="colorRev" x1="0" y1="0" x2="0" y2="1">
@@ -159,9 +212,9 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
                   axisLine={false}
                   tickLine={false}
                   tick={{ fontSize: 11, fill: "#94a3b8" }}
-                  tickFormatter={(v) => `${(v / 1000000).toFixed(1)}M`}
+                  tickFormatter={(v: number) => (v >= 1000000 ? `${(v / 1000000).toFixed(1)}M` : v >= 1000 ? `${(v / 1000).toFixed(0)}k` : `${v}`)}
                 />
-                <Tooltip formatter={(value: number) => [formatRupiah(value)]} />
+                <Tooltip formatter={(value: any) => [formatRupiah(Number(value) || 0)]} />
                 <Area type="monotone" dataKey="revenue" name="Omzet" stroke="#1954d6" fillOpacity={1} fill="url(#colorRev)" />
                 <Area type="monotone" dataKey="profit" name="Laba" stroke="#10b981" fillOpacity={1} fill="url(#colorProf)" />
               </AreaChart>
@@ -182,7 +235,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
               <p className="text-xs text-slate-400 italic py-4 text-center">Belum ada data penjualan produk asli</p>
             ) : (
               topSelling.map((item, idx) => (
-                <div key={idx} className="flex items-center justify-between p-2.5 bg-slate-50 rounded-xl border border-slate-100">
+                <div key={`${item.name}-${idx}`} className="flex items-center justify-between p-2.5 bg-slate-50 rounded-xl border border-slate-100">
                   <div className="flex items-center gap-2.5">
                     <span className="w-6 h-6 rounded-full bg-blue-100 text-[#1954d6] font-black text-xs flex items-center justify-center">
                       {idx + 1}

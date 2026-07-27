@@ -80,7 +80,7 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
           {/* Items */}
           <div className="space-y-2 border-b border-dashed border-slate-300 pb-3">
             {transaction.items.map((it, idx) => (
-              <div key={idx} className="flex justify-between items-start">
+              <div key={`${it.name}-${idx}`} className="flex justify-between items-start">
                 <div>
                   <p className="font-bold text-slate-900">{it.name}</p>
                   <p className="text-[11px] text-slate-500">{it.qty} x {formatRupiah(it.price)}</p>
